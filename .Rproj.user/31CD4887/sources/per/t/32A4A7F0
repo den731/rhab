@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1535338216403.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "175918631",
+    "id" : "32A4A7F0",
+    "lastKnownWriteTime" : 1536807941,
+    "last_content_update" : 1536807941,
+    "path" : "~/R/Slimmed/Data_Manipulation.R",
+    "project_path" : "Data_Manipulation.R",
+    "properties" : {
+        "cursorPosition" : "180,43",
+        "docOutlineVisible" : "0",
+        "scrollLine" : "160"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

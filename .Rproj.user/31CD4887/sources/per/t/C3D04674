@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1537307611035.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1850276434",
+    "id" : "C3D04674",
+    "lastKnownWriteTime" : 1534694725,
+    "last_content_update" : 1534694725,
+    "path" : "~/R/Slimmed/BarPlots.R",
+    "project_path" : "BarPlots.R",
+    "properties" : {
+        "cursorPosition" : "130,13",
+        "marks" : "<:130,12\n>:130,13",
+        "scrollLine" : "134"
+    },
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
