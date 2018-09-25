@@ -4,4 +4,4 @@ If you are using the R-console:
     The Libraries.R loads other neccessary packages for other functions
     Each file ending in .R are some subset of analysis.
 
-To inquiry, email me: hamzah.ansari@protonmail.com
+For inquiry, email me: hamzah.ansari@protonmail.com
