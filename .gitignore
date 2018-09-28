@@ -2,3 +2,9 @@
 *.png
 *.svg
 .Rproj.user**
+DistributionTest.R
+Hobo.R
+Tables.R
+k-fold.Rmd
+pairwise.Rmd
+
