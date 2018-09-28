@@ -7,4 +7,5 @@ Hobo.R
 Tables.R
 k-fold.Rmd
 pairwise.Rmd
-
+.RData
+.Rhistory
