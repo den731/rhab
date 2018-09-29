@@ -1,0 +1,295 @@
+---
+output:
+  word_document:
+    reference_docx: Style_reference.docx
+  pdf_document: default
+params:
+  lake: WTL
+  year: '2017'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+
+
+#Librarys
+#install.packages("RPostgreSQL")
+library(RPostgreSQL)
+
+#install.packages("tidyverse")
+library(tidyverse)
+#install.packages("shiny")
+library(shiny)
+#install.packages("GGally")
+library(GGally)
+#install.packages("viridis")
+library(viridis)
+#install.packages("ggthemes")
+library(ggthemes)
+#install.packages("xtable")
+library(xtable)
+
+library(readxl)
+#install.packages("RColorBrewer")
+library(RColorBrewer)
+#install.packages("stargazer")
+library(stargazer)
+#install.packages("rpart")
+#install.packages("rpart.plot")
+#install.packages("tensorflow")
+#library(tensorflow)
+library(rpart)
+library(rpart.plot)
+# Regression Packages
+#install.packages("MASS")
+#install.packages("lme4")
+#install.packages("leaps")
+library(lme4)
+library(leaps)
+#install.packages("rmarkdown")
+library(rmarkdown)
+#install.packages("knitr")
+library(knitr)
+library(kableExtra)
+library(leaps)
+#install.packages("cowplot")
+library(cowplot)
+#install.packages("FactoMineR")
+#install.packages("factoextra")
+#library(MASS)
+library(FactoMineR)
+library(factoextra)
+
+#Functions
+
+
+```
+
+```{r DataManipulation, include=FALSE}
+#Load Data
+Master_Sheet <- read_excel("20170214_Master_Sheet.xlsx", 
+                                     na = "-999")
+Lake_info_comprehensive <- read_excel("C:/Users/John Conner/Google Drive/2017-2018 HAB Survey/DATA/Master/Lake_info_comprehensive.xls")
+
+#Manipulation------
+
+# Order months by month instead of alphabetical, and converted spatts into nanogram per gram of resin. Also calculate total Sum from spatts
+MonthOrdered <- Master_Sheet %>% 
+  mutate(month = factor(month.name[Month], levels = month.name)) %>% 
+  arrange(month) %>%
+  mutate_at(vars(39:51, 53), funs(.*45/3)) %>% 
+  rowwise() %>%
+  mutate(S_SUM = sum(S_D_Asp3_RR, S_MC_RR, S_Nodul, S_MC_YR, S_MC_HtyR, S_MC_LR, S_D_Asp3_RR, S_MC_HilR, S_MC_WR, S_MC_LA, S_MC_LY, S_MC_LW, S_MC_LF))
+
+# Subset for generalized model and apply log transformation
+MODEL <- MonthOrdered %>% 
+  select(8:12, 14, 16, 20:33, 39:53, 55:61) %>%
+  mutate_at(vars(OP:TKN, 8:36), funs(log1p(.)))
+
+# Subset for PCA, no log transformation and only all numerical values
+MODEL_PCA <- MonthOrdered %>%
+  select(8:12, 14, 15, 16, 32, 52, 55:61)
+
+# Subset with NA removed
+MODEL_NA <- MODEL %>% select(1:6, SUM, 37:43) %>% na.omit()
+
+# Calculate land use percentages
+info <- Lake_info_comprehensive %>% 
+  rowwise() %>% 
+  mutate(sum = sum(Water,Developed,Barren,Forest,Shrubs,
+                   Herbaceous,Agriculture,Wetlands)) %>% 
+  mutate_at(vars(Water:Wetlands), funs(./sum)) %>% 
+  mutate_at(vars(Water:Wetlands), funs(.*100))
+
+# Averages for each lake code         
+lkcode_grp <- MonthOrdered %>%
+  group_by(LK_CODE) %>% select(LK_CODE, OP:phyco) %>%
+  summarise_all(funs(mean(.,na.rm = TRUE))) %>%
+  mutate_at(vars(OP:TKN, Nodul:S_ELISA), funs(log1p(.))) %>%
+  mutate_at(vars("16SRNA", MCYE, do:phyco), funs(log(.)))
+
+# Joined 
+model <- full_join(info, lkcode_grp, by = "LK_CODE")
+
+model1 <- full_join(info, lkcode_grp, by = "LK_CODE") %>% 
+  mutate_at(vars(Water:Wetlands), funs(./100))
+
+fullmod <- full_join(info, MonthOrdered, by ="LK_CODE") %>%
+  mutate_at(vars(Water:Wetlands), funs(./100))
+
+# Subsets
+grabNutes <- MonthOrdered %>% 
+  select(LK_CODE, month, NOX, OP, NH3, TP, TKN, ELISA, SUM,TNTP) %>% 
+  mutate_at(vars(NOX, OP, NH3, TP, TKN, ELISA, SUM), funs(log1p(.)))
+
+spattNutes <- MonthOrdered %>% 
+  select(LK_CODE, month, NOX, OP, NH3, TP, TKN, S_ELISA, S_SUM) %>% 
+  mutate_at(vars(NOX, OP, NH3, TP, TKN, S_ELISA, S_SUM), funs(log1p(.)))
+
+cong_lk <- MonthOrdered %>%
+  select(LK_CODE, Nodul:ELISA) %>% 
+  group_by(LK_CODE) %>% summarise_all(funs(mean(.,na.rm = TRUE))) %>%
+  rowwise() %>% 
+  mutate(sumz = sum(Nodul,D_Asp3_RR, MC_RR, MC_YR, MC_HTyR, MC_LR, D_Asp3_LR, MC_HiLR, MC_WR, MC_LA, MC_LY, MC_LW, MC_LF, na.rm = TRUE)) %>% 
+  mutate_at(vars(Nodul:MC_LF), funs(./sumz)) %>% 
+  mutate_at(vars(Nodul:MC_LF), funs(.*100))
+
+cong_sp <- MonthOrdered %>%
+  select(LK_CODE, S_D_Asp3_RR:S_ELISA) %>% 
+  group_by(LK_CODE) %>% summarise_all(funs(mean(.,na.rm = TRUE))) %>%
+  rowwise() %>% 
+  mutate(sumz = sum(S_Nodul,S_D_Asp3_RR, S_MC_RR, S_MC_YR, S_MC_HtyR, S_MC_LR, S_D_Asp3LR, S_MC_HilR, S_MC_WR, S_MC_LA, S_MC_LY, S_MC_LW, S_MC_LF, na.rm = TRUE)) %>% 
+  mutate_at(vars(S_D_Asp3_RR:S_MC_LF), funs(./sumz)) %>% 
+  mutate_at(vars(S_D_Asp3_RR:S_MC_LF), funs(.*100))
+
+# Tables for barplots as percentages
+cong_sum <- cong_lk %>% gather(congener, percentage, Nodul:MC_LF)
+
+landus_sum <- model %>% gather(LandUse, percentage, Water:Wetlands)
+
+cong_sum_sp <- cong_sp %>% gather(congener, percentage, S_D_Asp3_RR:S_MC_LF)
+
+cong_1 <- inner_join(
+  cong_sum, Lake_info_comprehensive, by = "LK_CODE"
+  ) %>% 
+  select(LK_CODE, congener, percentage, Lat)
+
+cong_2 <- inner_join(
+  cong_sum_sp, Lake_info_comprehensive, by = "LK_CODE"
+  ) %>% 
+  select(LK_CODE, congener, percentage, Lat)
+#
+```
+
+
+
+`r Lake_info_comprehensive %>% filter(LK_CODE == params$lake) %>% select("Lake Name")` `r params$year `
+
+## Introduction
+
+  Once each month from July to October of 2017 we surveyed 32 Michigan lakes. At the start of each month, water conditions were recorded, samples were taken, and Solid Phase Adsorption Toxin Tracking (SPATT) bags were deployed and collected. Analysis of the water samples included analysis of nutrients, qPCR for cyanobacteria genes, and microcystins and other toxins. SPATTs are a new way of tracking toxins that provide a time weighted relative measure.
+
+
+
+## Microcystin and Aquatic Toxin Summary
+
+Enzyme Linked Immunosorbent  Assay (ELISA) is a most commonly used analytical method for microcystin (MC) detection. Further data will demonstrate the validity of the test across multiple aquatic environments. We will be ultimately comparing ELISA with Mass Spectrometry (MS) results because it is the most precise and accurate method of quantification.  Different MC congeners were measured and added as a sum (Sum of MC Congeners) to be compared with ELISA.
+
+The information collected reflects the conditions at the time of sampling, but toxins recovered from the SPATT bags are indicative of toxin levels during the weeks between sampling. The SPATT bags were deployed for the month-long period between sampling events and then collected. SPATT data are represented by the total toxins collected during the period. The reported concentrations are from the analytical procedures used on the SPATT bags and are not directly indicative of average toxin levels. There is no USEPA guidance for this procedure yet and we will use the 2017 and 2018 data to provide interim guidance.
+
+
+## Grab Sample
+
+
+```{r, fig.width=9}
+ MonthOrdered %>% select(LK_CODE, Month, year, ELISA, SUM) %>% filter(LK_CODE == params$lake) %>%   gather(Analysis, toxin, ELISA, SUM) %>%
+  ggplot(aes(x=Month)) + 
+  geom_line(aes(y=toxin, group=Analysis, color=Analysis), linetype='solid') + 
+  geom_point(aes(x=Month, y=toxin)) + 
+  ylab("MC in ppb") +
+  scale_x_continuous(breaks = c(7,8,9,10) ,label=c("July", "August", "September", "October"))+
+  geom_hline(aes(yintercept = 4), color="#BB0000", linetype="dashed", show.legend = FALSE) + 
+  scale_color_discrete(labels = c("ELISA", "Sum of \nMC Congeners")) +
+  geom_text(aes(9,4.4, label = "EPA Guideline"), color="#BB0000", show.legend=FALSE) +
+  labs(title = "Total MC from Grab Samples") +
+  theme_classic() 
+```
+
+
+
+
+\newpage
+
+
+## SPATTS
+
+
+
+
+```{r, fig.width=9}
+ MonthOrdered %>% select(LK_CODE, Month, year, S_D_Asp3_RR:S_MC_LF) %>% filter(LK_CODE == params$lake) %>%   gather(Congeners, toxin, S_D_Asp3_RR:S_MC_LF) %>%
+  ggplot(aes(x=Month, group=Congeners)) + 
+  geom_line(aes(y=toxin, linetype=Congeners, color=Congeners)) + 
+  geom_point(aes(x=Month, y=toxin), show.legend = FALSE) + 
+
+  ylab("Recovered ng of MC / g of HP20 resin") +
+  scale_x_continuous(breaks = c(8,9,10) ,label=c( "August", "September", "October"), limit = c(8,10)) +
+  scale_color_discrete(labels = c("D Asp3 RR", "D Asp3 LR", "MC HiLR", "MC HtyR", "MC LA", "MC LF", "MC LR", "MC LW", "MC LY", "MC RR", "MC WR", "MC YR", "Nodularin")) +
+  scale_linetype_discrete(labels = c("D Asp3 RR", "D Asp3 LR", "MC HiLR", "MC HtyR", "MC LA", "MC LF", "MC LR", "MC LW", "MC LY", "MC RR", "MC WR", "MC YR", "Nodularin")) +
+  labs(title = "MC Congeners from SPATTS") +
+  theme_classic()
+
+```
+
+
+
+
+
+
+
+```{r, fig.width=9}
+ MonthOrdered %>% select(LK_CODE, Month, year, S_ELISA, S_SUM) %>% filter(LK_CODE == params$lake) %>%   gather(Analysis, toxin, S_ELISA, S_SUM) %>%
+  ggplot(aes(x=Month)) + 
+  geom_line(aes(y=toxin, group=Analysis, color=Analysis), linetype='solid') + 
+  geom_point(aes(x=Month, y=toxin)) + 
+  ylab("Recovered ng of MC / g of HP20 resin") +
+  scale_x_continuous(limits = c(8,10), breaks = c(8,9,10) ,label=c("August", "September", "October"))+
+  
+  scale_color_discrete(labels = c("ELISA", "Sum of \nMC Congeners")) +
+  labs(title = "Total MC from SPATTS") +
+  theme_classic()  
+```
+
+
+\newpage
+
+
+## qPCR
+
+  QPCR is a DNA test to rapidly measure the amount of total cyanobacteria (16s rRNA ) and  toxin genes (mcyE) present. PhytoxigeneTM CyanoDtec test was performed with Applied Biosystem StepOnePlus PCR. Total Cyanobacteria 16s rRNA and toxin gene assay were analyzed in parallel for each month of grab samples. Data for each month is listed in table  below. CyrA and SxtA were not detected  for this year.  The calculated values are expressed as "GeneCopies/mL". 
+  
+  16s rRNA is a ubiquitis gene which is found in mostly all cyanobacteria. The 16s rRNA gene copies is used to measure relativly how much cyanobacteria is found in your lake. McyE gene is one of the few genes responsible of producing microcystin. Presence of these genes do not indicate that the toxins are present. Detection of McyE gene would indicate that the lake has the potential to produce microcystin and is advised to continue monitoring the lake. We do not become concerned until total cyanobacteria (16s rRNA) are above 200,000 and toxin genes (McyE) are above 10,000.
+  
+
+```{r, results='asis', echo=FALSE, fig.align='center'}
+third <- MonthOrdered %>% filter(LK_CODE == params$lake, year == params$year) %>%
+  select(Mo, '16SRNA', MCYE)
+
+kable(third, format = "markdown", digits = 0, col.names = c("Month", "16s rRNA (copies/mL)", "mcyE (copies/mL)"))
+
+
+
+#stargazer(as.data.frame(third),  header=FALSE, covariate.labels = c("Nodularin", "{[D-Asp3]}MC-RR", "MC-RR", "MC-YR", "MC-HtyR", "MC-LR", "{[D-Asp3]}MC-LR", "MC-HilR", "MC-WR", "MC-LA", "MC-LY","MC-LW", "MC-LF", "MC Sum from LC MS/MS ", "MC from ELISA"), notes = "Values are expressed as(mg of MC*${mL^{-1}}$)", notes.align = "r")
+
+```
+
+\newpage
+
+## Nutrient Summary
+
+
+The chart and table show thye nutrient levels below. The key nutrients we measure are the forms of nitrogen and phosphorous. Phosphorus has long been known to increase the algal and cyanobacteria growth.
+
+```{r  results='asis'}
+ aa <- MonthOrdered %>% select(LK_CODE, year, OP:TKN) %>% filter(LK_CODE == params$lake) %>% filter(year == params$year) %>% gather(Nutrients, Level, OP:TKN)
+
+aa %>% ggplot(aes(x=Nutrients, y=Level)) + geom_boxplot() + ylab("Levels in mg/L") + scale_x_discrete(labels=c("Ammonia as N", "Nitrate+Nitrite as N", "Orthophosphate as P", "Total Kjeldahl Nitrogen as N", "Total Phosphorus as P")) + theme(axis.text.x = element_text(angle = 20, hjust = 1))
+```
+
+```{r nutrients, results='asis'}
+MonthOrdered %>% select(LK_CODE, year, Mo, OP:TKN) %>% filter(LK_CODE == params$lake) %>% select(Mo, OP:TKN) %>% kable(col.names = c("Month", "Orthophosphate (mg P/L)", "Nitrate + Nitrite (mg N/L)", "Ammonia (mg N/L)", "Total Phosphorus (mg P/L)", "Total Kjeldahl Nitrogen (mg N/L)"))
+```
+
+## Water Parameters
+
+
+```{r}
+ MonthOrdered %>% filter(LK_CODE == params$lake, year == params$year) %>% 
+  select(Mo, wtemp, turb, pH, do, conduc, chloro, phyco) %>%
+  #ggplot(aes(x=Mo, y=turb)) + geom_point()
+  kable(col.names = c("Month", "Temperature (°C)", "Turbidity (NTU)", "pH", "Dissolve Oxygen (mg/L)", "Conductivity (μS)" , "Chlorophyll-a (RFU)", "Phycocyanin (RFU)"))
+```
+
+
+
