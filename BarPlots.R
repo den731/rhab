@@ -19,7 +19,7 @@ B <- UltimateFactor %>%
   stat_summary(fun.data = mean_se, geom = "errorbar", width=0.5) + 
   theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4)) +
   xlab("Lake Site") +
-  ylab("MC in ng / g of resin ")
+  ylab("MC in ng / g of resin per day ")
 C <-  UltimateFactor %>% 
   mutate(Lat=as.factor(round(Lat,2))) %>%
   ggplot(aes(x=Lat, y=SUM)) + 
@@ -106,7 +106,7 @@ a<-  cong_spatt %>%
   theme(axis.text.x = element_text(angle = 90, size = 8, vjust = 0.4),
         legend.key.height = unit(1.46,"line"),
         legend.title  = element_blank()) +
-  ylab(TeX('Average Concent. (ng of MC / g of resin)')) +
+  ylab(TeX('Average Concent. (ng of MC / g of resin per day)')) +
   xlab("Lakes")
 
 cong_spatt1 <- UltimateFactor %>% gather(congener, average, S_D_Asp3_RR:S_MC_LW) 
@@ -140,7 +140,7 @@ b<- cong_spatt1 %>%
 #  "[D-Asp3] MC-RR",
 #  "[D-Asp3] MC-LR" 
 #  )) +
-ylab("Average Concent. (ng of MC / g of resin)")  + 
+ylab("Average Concent. (ng of MC / g of resin per day)")  + 
   xlab(" ") +
   coord_flip() 
 
@@ -159,7 +159,7 @@ UltimateFactor %>%
   stat_summary(fun.data = mean_se, geom = "errorbar", width=0.5) + 
   
   xlab("Congeners") +
-  ylab("Concentrations (ng of MC / g of resin)") +
+  ylab("Concentrations (ng of MC / g of resin per day)") +
   
   scale_x_discrete(label=c( "[D-Asp3] MC-RR","[D-Asp3] MC-LR",    "MC-HilR", "MC-HtyR","MC-LA", "MC-LR",  "MC-LW", "MC-LY","MC-RR", "MC-WR", "MC-YR", "Nodularin")) + 
   theme(axis.text.x = element_text(angle = 90, size = 8, vjust = 0.4)) 

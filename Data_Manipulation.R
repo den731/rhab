@@ -86,7 +86,7 @@ MonthOrdered <- as.data.frame(Master_Sheet) %>%
     S_MC_YR, S_MC_HtyR, S_MC_LR,
     S_D_Asp3_RR, S_MC_HilR, S_MC_WR,
     S_MC_LA, S_MC_LY, S_MC_LW,
-    S_MC_LF), funs(.*45/3)) %>% 
+    S_MC_LF), funs(.*45/90)) %>% # Edited, fixed to per day
   # Converted spatts into nanogram per gram of resin
   rowwise() %>% 
   mutate(S_SUM = 
