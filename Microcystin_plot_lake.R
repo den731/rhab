@@ -1,6 +1,7 @@
 require(latex2exp)
 library(viridis)
 library(cowplot)
+library(reshape2)
 UltimateFactor %>% 
   ggplot(aes(x=LK_CODE, y=(SUM))) + 
   geom_point(aes(x=LK_CODE, y= SUM, color="SUM"), size=2, alpha=0.5) + 
@@ -29,15 +30,84 @@ print(x)
 dev.off()
 x
 
-
+######################################################################################################
 Delta %>% UltimateFactor %>% mutate(delta=SUM-ELISA)
 
-
+######################################################################################################
 July <- Delta %>% filter(Month == "7") %>% gather(congener, value, Nodul:MC_LF)
 August <- Delta %>% filter(Month == "8") %>% gather(congener, value, Nodul:MC_LF)
 Sept <- Delta %>% filter(Month == "9") %>% gather(congener, value, Nodul:MC_LF)
 Oct <- Delta %>% filter(Month == "10") %>% gather(congener, value, Nodul:MC_LF)
 
+july <- Delta %>% filter(Month == "7")
+august <- Delta %>% filter(Month == "8")
+sept <- Delta %>% filter(Month == "9")
+oct <- Delta %>% filter(Month == "10")
+melt.july <- july %>% select(LK_CODE, SUM, ELISA) %>% melt()
+melt.august <- august %>% select(LK_CODE, SUM, ELISA) %>% melt()
+melt.sept <- sept %>% select(LK_CODE, SUM, ELISA) %>% melt()
+melt.oct <- oct %>% select(LK_CODE, SUM, ELISA) %>% melt() 
+####################################################################################################
+a<-melt.july %>% 
+  ggplot(aes(x=LK_CODE, y=value, fill=variable)) + 
+  geom_bar(stat="identity", position="dodge", color="black")  + 
+  theme_classic() + 
+  scale_fill_viridis(discrete = T, option = "E",
+                     label=c("LC-MS/MS", "ELISA")) +
+  theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
+        legend.key.height = unit(1.8,"line"),
+        legend.title  = element_blank()) +
+  ylab(TeX(' MC ($\\mu$g/L)')) +
+  xlab("Lakes")
+
+b<-melt.august %>% 
+  ggplot(aes(x=LK_CODE, y=value, fill=variable)) + 
+  geom_bar(stat="identity", position="dodge", color="black")  + 
+  theme_classic() + 
+  scale_fill_viridis(discrete = T, option = "E",
+                     label=c("LC-MS/MS", "ELISA")) +
+  theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
+        legend.key.height = unit(1.8,"line"),
+        legend.title  = element_blank()) +
+  ylab(TeX(' MC ($\\mu$g/L)')) +
+  xlab("Lakes")
+
+c<-melt.sept %>% 
+  ggplot(aes(x=LK_CODE, y=value, fill=variable)) + 
+  geom_bar(stat="identity", position="dodge", color="black")  + 
+  theme_classic() + 
+  scale_fill_viridis(discrete = T, option = "E",
+                     label=c("LC-MS/MS", "ELISA")) +
+  theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
+        legend.key.height = unit(1.8,"line"),
+        legend.title  = element_blank()) +
+  ylab(TeX(' MC ($\\mu$g/L)')) +
+  xlab("Lakes")
+
+d<-melt.oct %>% 
+  ggplot(aes(x=LK_CODE, y=value, fill=variable)) + 
+  geom_bar(stat="identity", position="dodge", color="black")  + 
+  theme_classic() + 
+  scale_fill_viridis(discrete = T, option = "E",
+                     label=c("LC-MS/MS", "ELISA")) +
+  theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
+        legend.key.height = unit(1.8,"line"),
+        legend.title  = element_blank()) +
+  ylab(TeX(' MC ($\\mu$g/L)')) +
+  xlab("Lakes")
+
+legend_b <- get_legend(a + theme(legend.position = "bottom", legend.key.size = unit(0.2,"cm")))
+dd <- plot_grid(a + theme(legend.position = "none"),
+          b + theme(legend.position = "none"),
+          c + theme(legend.position = "none"),
+          d + theme(legend.position = "none"), 
+          labels = c("A", "B", "C", "D"),
+          align = 'vh',
+          ncol = 2)
+plot_grid(dd, legend_b, ncol=1, rel_heights = c(1, .2), rel_widths = c(1,0.2))
+ggsave("compare.eps", device="eps")
+######################################################################################################
+## month.eps##
 a<-July %>% 
   ggplot(aes(x=LK_CODE)) + 
   geom_bar(stat="identity", aes(y=value, fill=congener, width=1))  + 
@@ -55,14 +125,12 @@ a<-July %>%
                               "MC-WR",
                               "MC-YR", 
                               "Nodularin")) + 
-  geom_point(aes(x=LK_CODE, y=ELISA, color="ELISA")) +
   theme_classic() + 
-  scale_color_manual(labels = c("MC from ELISA"), values = c("green")) +
   theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
         legend.key.height = unit(1.8,"line"),
         legend.title  = element_blank()) +
   ylab(TeX(' MC ($\\mu$g/L)')) +
-  xlab("Lakes")
+  xlab(" ")
 
 b<-August %>% 
   ggplot(aes(x=LK_CODE)) + 
@@ -81,14 +149,12 @@ b<-August %>%
                               "MC-WR",
                               "MC-YR", 
                               "Nodularin")) + 
-  geom_point(aes(x=LK_CODE, y=ELISA, color="ELISA")) +
   theme_classic() + 
-  scale_color_manual(labels = c("MC from ELISA"), values = c("green")) +
   theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
         legend.key.height = unit(1.8,"line"),
         legend.title  = element_blank()) +
-  ylab(TeX(' MC ($\\mu$g/L)')) +
-  xlab("Lakes")
+  ylab(" ") +
+  xlab(" ")
 
 c<-Sept %>% 
   ggplot(aes(x=LK_CODE)) + 
@@ -107,9 +173,7 @@ c<-Sept %>%
                               "MC-WR",
                               "MC-YR", 
                               "Nodularin")) + 
-  geom_point(aes(x=LK_CODE, y=ELISA, color="ELISA")) +
   theme_classic() + 
-  scale_color_manual(labels = c("MC from ELISA"), values = c("green")) +
   theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
         legend.key.height = unit(1.8,"line"),
         legend.title  = element_blank()) +
@@ -133,16 +197,14 @@ d<-Oct %>%
                               "MC-WR",
                               "MC-YR", 
                               "Nodularin")) + 
-  geom_point(aes(x=LK_CODE, y=ELISA, color="ELISA")) +
   theme_classic() + 
-  scale_color_manual(labels = c("MC from ELISA"), values = c("green")) +
   theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
         legend.key.height = unit(1.8,"line"),
         legend.title  = element_blank()) +
-  ylab(TeX(' MC ($\\mu$g/L)')) +
+  ylab("  ") +
   xlab("Lakes")
 
-legend_b <- get_legend(a + theme(legend.position = "bottom", legend.key.size = unit(0.2,"cm")))
+legend_b <- get_legend(a + theme(legend.position = "bottom", legend.key.size = unit(0.3,"cm")))
 dd <- plot_grid(a + theme(legend.position = "none"),
           b + theme(legend.position = "none"),
           c + theme(legend.position = "none"),
@@ -150,5 +212,5 @@ dd <- plot_grid(a + theme(legend.position = "none"),
           labels = c("A", "B", "C", "D"),
           align = 'vh',
           ncol = 2)
-plot_grid(dd, legend_b, ncol=1, rel_heights = c(1, .2), rel_widths = c(1,0.2))
+plot_grid(dd, legend_b, ncol=1, rel_heights = c(1, .1), rel_widths = c(1,0.2))
 ggsave("month.eps", device="eps")
