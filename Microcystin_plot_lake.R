@@ -1,12 +1,17 @@
+# Load Library #####################
 require(latex2exp)
 library(viridis)
 library(cowplot)
 library(reshape2)
+
+## All MC data ##########################
 UltimateFactor %>% 
   ggplot(aes(x=LK_CODE, y=(SUM))) + 
   geom_point(aes(x=LK_CODE, y= SUM, color="SUM"), size=2, alpha=0.5) + 
   geom_point(aes(x=LK_CODE, y=(ELISA), color="ELISA"), size = 2, alpha=0.5) +  
-  theme_classic() + ylab(TeX('$\\mu$g/L of MC')) + xlab( "Lakes")  + 
+  theme_classic() + 
+  ylab(TeX('$\\mu$g/L of MC')) + 
+  xlab( "Lakes")  + 
   theme(
     legend.title=element_blank(), 
     legend.position="bottom", 
@@ -28,37 +33,61 @@ cairo_ps(filename = "Microcystin.eps",
          fallback_resolution = 300)
 print(x)
 dev.off()
-x
 
-######################################################################################################
-Delta %>% UltimateFactor %>% mutate(delta=SUM-ELISA)
+### Manipulation ###################################################################################################
+July <- UltimateFactor %>%
+  filter(Month == "7") %>% 
+  gather(congener, value, Nodul:MC_LF)
+August <- UltimateFactor %>% 
+  filter(Month == "8") %>% 
+  gather(congener, value, Nodul:MC_LF)
+Sept <- UltimateFactor %>% 
+  filter(Month == "9") %>% 
+  gather(congener, value, Nodul:MC_LF)
+Oct <- UltimateFactor %>% 
+  filter(Month == "10") %>% 
+  gather(congener, value, Nodul:MC_LF)
 
-######################################################################################################
-July <- Delta %>% filter(Month == "7") %>% gather(congener, value, Nodul:MC_LF)
-August <- Delta %>% filter(Month == "8") %>% gather(congener, value, Nodul:MC_LF)
-Sept <- Delta %>% filter(Month == "9") %>% gather(congener, value, Nodul:MC_LF)
-Oct <- Delta %>% filter(Month == "10") %>% gather(congener, value, Nodul:MC_LF)
+aa <- UltimateFactor %>% 
+  filter(Month == "8") %>% 
+  gather(congener, value, S_D_Asp3_RR:S_MC_LF)
+ss <- UltimateFactor %>% 
+  filter(Month == "9") %>% 
+  gather(congener, value, S_D_Asp3_RR:S_MC_LF)
+oo <- UltimateFactor %>% 
+  filter(Month == "10") %>% 
+  gather(congener, value, S_D_Asp3_RR:S_MC_LF)
 
-july <- Delta %>% filter(Month == "7")
-august <- Delta %>% filter(Month == "8")
-sept <- Delta %>% filter(Month == "9")
-oct <- Delta %>% filter(Month == "10")
-melt.july <- july %>% select(LK_CODE, SUM, ELISA) %>% melt()
-melt.august <- august %>% select(LK_CODE, SUM, ELISA) %>% melt()
-melt.sept <- sept %>% select(LK_CODE, SUM, ELISA) %>% melt()
-melt.oct <- oct %>% select(LK_CODE, SUM, ELISA) %>% melt() 
-####################################################################################################
+july <- UltimateFactor %>% 
+  filter(Month == "7")
+august <- UltimateFactor %>% 
+  filter(Month == "8")
+sept <- UltimateFactor %>% 
+  filter(Month == "9")
+oct <- UltimateFactor %>% 
+  filter(Month == "10")
+melt.july <- july %>% 
+  select(LK_CODE, SUM, ELISA) %>% melt()
+melt.august <- august %>% 
+  select(LK_CODE, SUM, ELISA) %>% melt()
+melt.sept <- sept %>% 
+  select(LK_CODE, SUM, ELISA) %>% melt()
+melt.oct <- oct %>% 
+  select(LK_CODE, SUM, ELISA) %>% melt() 
+## LC-MS to ELISA compare ##################################################################################################
+# compare.eps
 a<-melt.july %>% 
   ggplot(aes(x=LK_CODE, y=value, fill=variable)) + 
   geom_bar(stat="identity", position="dodge", color="black")  + 
   theme_classic() + 
-  scale_fill_viridis(discrete = T, option = "E",
-                     label=c("LC-MS/MS", "ELISA")) +
+  scale_fill_viridis(discrete = T, 
+                     option = "E",
+                     label=c("LC-MS/MS ", "ELISA")) +
   theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
         legend.key.height = unit(1.8,"line"),
         legend.title  = element_blank()) +
   ylab(TeX(' MC ($\\mu$g/L)')) +
-  xlab("Lakes")
+  xlab("  ")
 
 b<-melt.august %>% 
   ggplot(aes(x=LK_CODE, y=value, fill=variable)) + 
@@ -69,8 +98,8 @@ b<-melt.august %>%
   theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
         legend.key.height = unit(1.8,"line"),
         legend.title  = element_blank()) +
-  ylab(TeX(' MC ($\\mu$g/L)')) +
-  xlab("Lakes")
+  ylab(" ") +
+  xlab(" ")
 
 c<-melt.sept %>% 
   ggplot(aes(x=LK_CODE, y=value, fill=variable)) + 
@@ -93,10 +122,12 @@ d<-melt.oct %>%
   theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
         legend.key.height = unit(1.8,"line"),
         legend.title  = element_blank()) +
-  ylab(TeX(' MC ($\\mu$g/L)')) +
+  ylab(" ") +
   xlab("Lakes")
 
-legend_b <- get_legend(a + theme(legend.position = "bottom", legend.key.size = unit(0.2,"cm")))
+legend_b <- get_legend(a + 
+                         theme(legend.position = "bottom", 
+                               legend.key.size = unit(0.2,"cm")))
 dd <- plot_grid(a + theme(legend.position = "none"),
           b + theme(legend.position = "none"),
           c + theme(legend.position = "none"),
@@ -106,7 +137,7 @@ dd <- plot_grid(a + theme(legend.position = "none"),
           ncol = 2)
 plot_grid(dd, legend_b, ncol=1, rel_heights = c(1, .2), rel_widths = c(1,0.2))
 ggsave("compare.eps", device="eps")
-######################################################################################################
+# LC-MS month by month#####################################################################################################
 ## month.eps##
 a<-July %>% 
   ggplot(aes(x=LK_CODE)) + 
@@ -130,11 +161,13 @@ a<-July %>%
         legend.key.height = unit(1.8,"line"),
         legend.title  = element_blank()) +
   ylab(TeX(' MC ($\\mu$g/L)')) +
-  xlab(" ")
+  xlab(" ") + 
+  scale_y_continuous(limits = c(0,15))
 
 b<-August %>% 
   ggplot(aes(x=LK_CODE)) + 
-  geom_bar(stat="identity", aes(y=value, fill=congener, width=1))  + 
+  geom_bar(stat="identity", 
+           aes(y=value, fill=congener, width=1))  + 
   scale_fill_viridis(discrete=TRUE,option="B",
                      label=c( "[D-Asp3] MC-LR",
                               "[D-Asp3] MC-RR", 
@@ -154,11 +187,13 @@ b<-August %>%
         legend.key.height = unit(1.8,"line"),
         legend.title  = element_blank()) +
   ylab(" ") +
-  xlab(" ")
+  xlab(" ") +
+  scale_y_continuous(limits = c(0,15))
 
 c<-Sept %>% 
   ggplot(aes(x=LK_CODE)) + 
-  geom_bar(stat="identity", aes(y=value, fill=congener, width=1))  + 
+  geom_bar(stat="identity", 
+           aes(y=value, fill=congener, width=1))  + 
   scale_fill_viridis(discrete=TRUE,option="B",
                      label=c( "[D-Asp3] MC-LR",
                               "[D-Asp3] MC-RR", 
@@ -178,7 +213,8 @@ c<-Sept %>%
         legend.key.height = unit(1.8,"line"),
         legend.title  = element_blank()) +
   ylab(TeX(' MC ($\\mu$g/L)')) +
-  xlab("Lakes")
+  xlab("Lakes") + 
+  scale_y_continuous(limits = c(0,15))
 
 d<-Oct %>% 
   ggplot(aes(x=LK_CODE)) + 
@@ -202,9 +238,14 @@ d<-Oct %>%
         legend.key.height = unit(1.8,"line"),
         legend.title  = element_blank()) +
   ylab("  ") +
-  xlab("Lakes")
+  xlab("Lakes") + 
+  scale_y_continuous(limits = c(0,15))
 
-legend_b <- get_legend(a + theme(legend.position = "bottom", legend.key.size = unit(0.3,"cm")))
+
+legend_b <- get_legend(a + 
+                         theme(legend.position = "bottom", 
+                               legend.key.size = unit(0.3,"cm")) +
+                       guides(colours = guide_legend(nrow = 1 )))
 dd <- plot_grid(a + theme(legend.position = "none"),
           b + theme(legend.position = "none"),
           c + theme(legend.position = "none"),
@@ -212,5 +253,96 @@ dd <- plot_grid(a + theme(legend.position = "none"),
           labels = c("A", "B", "C", "D"),
           align = 'vh',
           ncol = 2)
-plot_grid(dd, legend_b, ncol=1, rel_heights = c(1, .1), rel_widths = c(1,0.2))
-ggsave("month.eps", device="eps")
+plot_grid(dd, legend_b, ncol=1, nrow = 2, rel_heights = c(1, .3), rel_widths = c(1,0.2))
+ggsave("month.eps", height=9, units = "in", device="eps")
+
+# SPATTS month by month######################################################################################
+## spatter.eps
+a<-aa %>% 
+  ggplot(aes(x=LK_CODE)) + 
+  geom_bar(stat="identity", aes(y=value, fill=congener, width=1))  + 
+  scale_fill_viridis(discrete=TRUE,option="B",
+                     label=c( "[D-Asp3] MC-LR",
+                              "[D-Asp3] MC-RR", 
+                              "MC-HilR",
+                              "MC-HtyR",
+                              "MC-LA",
+                              "MC-LF",
+                              "MC-LR",
+                              "MC-LW",
+                              "MC-LY",
+                              "MC-RR", 
+                              "MC-WR",
+                              "MC-YR", 
+                              "Nodularin")) + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
+        legend.key.height = unit(1.8,"line"),
+        legend.title  = element_blank()) +
+  ylab(TeX('\\frac{ng of MC}{g of resin per day')) +
+  xlab("  ") + 
+  scale_y_continuous(limits = c(0,800))
+b<-ss %>% 
+  ggplot(aes(x=LK_CODE)) + 
+  geom_bar(stat="identity", aes(y=value, fill=congener, width=1))  + 
+  scale_fill_viridis(discrete=TRUE,option="B",
+                     label=c( "[D-Asp3] MC-LR",
+                              "[D-Asp3] MC-RR", 
+                              "MC-HilR",
+                              "MC-HtyR",
+                              "MC-LA",
+                              "MC-LF",
+                              "MC-LR",
+                              "MC-LW",
+                              "MC-LY",
+                              "MC-RR", 
+                              "MC-WR",
+                              "MC-YR", 
+                              "Nodularin")) + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
+        legend.key.height = unit(1.8,"line"),
+        legend.title  = element_blank()) +
+  ylab(TeX('\\frac{ng of MC}{g of resin per day')) +
+  xlab(" ") + 
+  scale_y_continuous(limits = c(0,800))
+
+c<-oo %>% 
+  ggplot(aes(x=LK_CODE)) + 
+  geom_bar(stat="identity", aes(y=value, fill=congener, width=1))  + 
+  scale_fill_viridis(discrete=TRUE,option="B",
+                     label=c( "[D-Asp3] MC-LR",
+                              "[D-Asp3] MC-RR", 
+                              "MC-HilR",
+                              "MC-HtyR",
+                              "MC-LA",
+                              "MC-LF",
+                              "MC-LR",
+                              "MC-LW",
+                              "MC-LY",
+                              "MC-RR", 
+                              "MC-WR",
+                              "MC-YR", 
+                              "Nodularin")) + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
+        legend.key.height = unit(1.8,"line"),
+        legend.title  = element_blank()) +
+  ylab(TeX('\\frac{ng of MC}{g of resin per day')) +
+  xlab("Lakes") + 
+  scale_y_continuous(limits = c(0,800))
+
+
+legend_b <- get_legend(a +
+                         theme(legend.position = "bottom",
+                               legend.direction = "horizontal", 
+                               legend.key.size = unit(0.3,"cm")) + 
+                         guides(colour = guide_legend(nrow = 1)))
+dd <- plot_grid(a + theme(legend.position = "none"),
+          b + theme(legend.position = "none"),
+          c + theme(legend.position = "none"),
+          labels = c("A", "B", "C"),
+          align = 'vh',
+          ncol = 1)
+plot_grid(dd, legend_b, ncol=1, nrow = 2, rel_heights = c(1, 0.3), rel_widths = c(1,1))
+ggsave("spatter.eps", width = 8, height = 11, units = c("in"), device="eps")

@@ -1,13 +1,13 @@
-## bar16srna.eps
 library(cowplot)
 library(viridis)
 library(latex2exp)
 library(viridis)
 library(cowplot)
+library(reshape2)
 
-#########################################################################################################
-# CHANGE THIS!!
-A<-UltimateFactor  %>%  ggplot(aes(LK_CODE,S_SUM )) + stat_summary(fun.y=mean, geom = "bar", fill=
+# 16s rRNA averaged########################################################################################################
+# bar16srna.eps
+A<-UltimateFactor  %>%  ggplot(aes(LK_CODE,X16SRNA )) + stat_summary(fun.y=mean, geom = "bar", fill=
                                                                      "white",
                                                                    na.rm = T,
                                                                    color=
@@ -16,25 +16,176 @@ A<-UltimateFactor  %>%  ggplot(aes(LK_CODE,S_SUM )) + stat_summary(fun.y=mean, g
   theme(axis.text.x = element_text(angle = 90, size = 8, vjust = 0.4)) +
   xlab("Lake Site") +
   ylab("16S rRNA (Genecopies/mL)")
-A
 ggsave("bar16srna.eps", device="eps")
 
-B<-UltimateFactor  %>%  ggplot(aes(LK_CODE,X16SRNA )) + stat_summary(fun.y=mean, geom = "bar", fill=
-                                                                       "white",
-                                                                     na.rm = T,
-                                                                     color=
-                                                                       "black") + theme_cowplot() +
-  stat_summary(fun.data = mean_se, geom = "errorbar", width=0.5) + 
-  theme(axis.text.x = element_text(angle = 90, size = 8, vjust = 0.4)) +
-  xlab("Lake Sites ") + 
-  ylab("16S rRNA (Genecopies/mL)")
+# Filter by month #############################################################
+July <- UltimateFactor %>%
+  filter(Month == "7") %>% 
+  gather(congener, value, X16SRNA)
+August <- UltimateFactor %>% 
+  filter(Month == "8") %>% 
+  gather(congener, value, X16SRNA)
+Sept <- UltimateFactor %>% 
+  filter(Month == "9") %>% 
+  gather(congener, value, X16SRNA)
+Oct <- UltimateFactor %>% 
+  filter(Month == "10") %>% 
+  gather(congener, value, X16SRNA)
 
-#Combined figures
-plot_grid(A,B, labels = c("A", "B"), align = "v", ncol = 1)
-ggsave("responsecombine.eps",height = 9, units = "in", device="eps")
+# 16s rRNA monthly graph ########################################################
+a <- LOGTransformed %>%
+  filter(Month == "7") %>%
+  select(LK_CODE, X16SRNA,MCYE) %>%
+  melt() %>%
+  ggplot(aes(x=LK_CODE, y=value, fill=variable)) +
+  geom_bar(stat="identity", position="dodge", color="black") +
+  scale_fill_discrete(label=c("16s rRNA  ", "mcyE")) +
+  theme_cowplot() +
+  theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
+        legend.key.height = unit(1.8,"line"),
+        legend.title  = element_blank()) +
+  ylab("Log(cp/L)") +
+  xlab(" ") +
+  scale_y_continuous(limits=c(0,7))
 
-###########################################################################################################
-## Barplot Nutrients nutboxlake
+b <- LOGTransformed %>%
+  filter(Month == "8") %>%
+  select(LK_CODE, X16SRNA,MCYE) %>%
+  melt() %>%
+  ggplot(aes(x=LK_CODE, y=value, fill=variable)) +
+  geom_bar(stat="identity", position="dodge", color="black") +
+  theme_cowplot() +
+  theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
+        legend.key.height = unit(1.8,"line"),
+        legend.title  = element_blank()) +
+  ylab(" ") +
+  xlab(" ") +
+  scale_y_continuous(limits=c(0,7))
+  
+c <- LOGTransformed %>%
+  filter(Month == "9") %>%
+  select(LK_CODE, X16SRNA,MCYE) %>%
+  melt() %>%
+  ggplot(aes(x=LK_CODE, y=value, fill=variable)) +
+  geom_bar(stat="identity", position="dodge", color="black") +
+  theme_cowplot() +
+  theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
+        legend.key.height = unit(1.8,"line"),
+        legend.title  = element_blank()) +
+  xlab("Lakes") +
+  ylab("Log(cp/L)") +
+  scale_y_continuous(limits=c(0,7))
+
+d <- LOGTransformed %>%
+  filter(Month == "10") %>%
+  select(LK_CODE, X16SRNA,MCYE) %>%
+  melt() %>%
+  ggplot(aes(x=LK_CODE, y=value, fill=variable)) +
+  geom_bar(stat="identity", position="dodge", color="black") +
+  theme_cowplot() +
+  theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
+        legend.key.height = unit(1.8,"line"),
+        legend.title  = element_blank()) +
+  ylab(" ") +
+  xlab("Lakes") +
+  scale_y_continuous(limits=c(0,7))
+
+legend_b <- get_legend(a + 
+                         theme(legend.position = "bottom", 
+                               legend.key.size = unit(0.3,"cm")) +
+                         guides(colours = guide_legend(nrow = 1 )))
+
+dd <- plot_grid(a + theme(legend.position = "none"),
+                b + theme(legend.position = "none"),
+                c + theme(legend.position = "none"),
+                d + theme(legend.position = "none"), 
+                labels = c("A", "B", "C", "D"),
+                align = 'vh',
+                ncol = 2)
+plot_grid(dd, legend_b, ncol=1, nrow = 2, rel_heights = c(1, .3), rel_widths = c(1,0.2))
+ggsave("gene.eps", device="eps")
+
+# chloro and phyco ################################################
+a <- UltimateFactor %>%
+  filter(Month == "7") %>%
+  select(LK_CODE, chloro,phyco) %>%
+  melt() %>%
+  ggplot(aes(x=LK_CODE, y=value, fill=variable)) +
+  geom_bar(stat="identity", position="dodge", color="black") +
+  scale_fill_manual(values=c("#078907","#890770")) +
+  theme_cowplot() +
+  theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
+        legend.key.height = unit(1.8,"line"),
+        legend.title  = element_blank()) +
+  ylab("RFU") +
+  xlab(" ") +
+  scale_y_continuous(limits=c(0,4.5))
+
+b <- UltimateFactor %>%
+  filter(Month == "8") %>%
+  select(LK_CODE, chloro,phyco) %>%
+  melt() %>%
+  ggplot(aes(x=LK_CODE, y=value, fill=variable)) +
+  geom_bar(stat="identity", position="dodge", color="black") +
+  scale_fill_manual(values=c("#078907","#890770")) +
+  theme_cowplot() +
+  theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
+        legend.key.height = unit(1.8,"line"),
+        legend.title  = element_blank()) +
+  ylab(" ") +
+  xlab(" ") +
+  scale_y_continuous(limits=c(0,4.5))
+  
+
+c <- UltimateFactor %>%
+  filter(Month == "9") %>%
+  select(LK_CODE, chloro,phyco) %>%
+  melt() %>%
+  ggplot(aes(x=LK_CODE, y=value, fill=variable)) +
+  geom_bar(stat="identity", position="dodge", color="black") +
+  scale_fill_manual(values=c("#078907","#890770")) +
+  theme_cowplot() +
+  theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
+        legend.key.height = unit(1.8,"line"),
+        legend.title  = element_blank()) +
+  xlab("Lakes") +
+  ylab("RFU") +
+  scale_y_continuous(limits=c(0,4.5))
+  
+
+d <- UltimateFactor %>%
+  filter(Month == "10") %>%
+  select(LK_CODE, chloro,phyco) %>%
+  melt() %>%
+  ggplot(aes(x=LK_CODE, y=value, fill=variable)) +
+  geom_bar(stat="identity", position="dodge", color="black") +
+  scale_fill_manual(values=c("#078907","#890770")) +
+  theme_cowplot() +
+  theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
+        legend.key.height = unit(1.8,"line"),
+        legend.title  = element_blank()) +
+  ylab(" ") +
+  xlab("Lakes") +
+  scale_y_continuous(limits=c(0,4.5))
+ 
+
+legend_b <- get_legend(a + 
+                         theme(legend.position = "bottom", 
+                               legend.key.size = unit(0.3,"cm")) +
+                         guides(colours = guide_legend(nrow = 1 )))
+
+dd <- plot_grid(a + theme(legend.position = "none"),
+                b + theme(legend.position = "none"),
+                c + theme(legend.position = "none"),
+                d + theme(legend.position = "none"), 
+                labels = c("A", "B", "C", "D"),
+                align = 'vh',
+                ncol = 2)
+plot_grid(dd, legend_b, ncol=1, nrow = 2, rel_heights = c(1, .3), rel_widths = c(1,0.2))
+ggsave("floro.eps", device="eps")
+
+# Barplot Nutrients nutboxlake##########################################################################################################
+
 A <-  UltimateFactor %>% 
   ggplot(aes(x=LK_CODE, y=OP)) + 
   stat_summary(fun.y=mean, geom = "bar", fill="white",
@@ -92,45 +243,52 @@ F <- UltimateFactor %>%
 plot_grid(A,B,C,D,E,F,labels = c("A", "B", "C","D","E", "F"), align = "v", ncol = 2)
 ggsave("nutboxplotlake.eps",height = 9 , units = "in", device="eps")
 
-#################################################################################################
-## barmcsum.eps Averaged Grab Samples
+# barmcsum.eps Averaged Grab Samples##############################################################
 
-A<-UltimateFactor  %>%  ggplot(aes(LK_CODE,SUM )) + stat_summary(fun.y=mean, geom = "bar", fill=
-                                                                   "white",
-                                                                 na.rm = T,
-                                                                 color=
-                                                                   "black") + theme_cowplot() +
+A<-UltimateFactor  %>%  
+  ggplot(aes(LK_CODE,SUM )) +
+  stat_summary(fun.y=mean, 
+               geom = "bar", 
+               fill="white",
+               na.rm = T,
+               color="black") + 
+  theme_cowplot() +
   stat_summary(fun.data = mean_se, geom = "errorbar", width=0.5) + 
   theme(axis.text.x = element_text(angle = 90, size = 8, vjust = 0.4)) +
   xlab("Lake Site") +
   ylab(TeX('Average MC ($\\mu$g/L)'))
 
-UltimateFactor  %>%  ggplot(aes(LK_CODE,SUM )) + stat_summary(fun.y=mean, geom = "bar", fill=
-                                                                "white",
-                                                              na.rm = T,
-                                                              color=
-                                                                "black") + theme_cowplot() +
+UltimateFactor  %>%  
+  ggplot(aes(LK_CODE,SUM )) + 
+  stat_summary(fun.y=mean, 
+               geom = "bar", 
+               fill="white",
+               na.rm = T,
+               color= "black") +
+  theme_cowplot() +
   stat_summary(fun.data = mean_se, geom = "errorbar", width=0.5) + 
   theme(axis.text.x = element_text(angle = 90, size = 8, vjust = 0.4)) +
   xlab(" ") +
   ylab(TeX('Average MC ($\\mu$g/L)'))
 ggsave("barmcsum.eps", device="eps")
-######################################################################################################
-# ZEBRAs
+# ZEBRAs#################################################################################
 
-UltimateFactor  %>%  ggplot(aes(LK_CODE,MusselMass )) + stat_summary(fun.y=mean, geom = "bar", fill=
-                                                                       "white",
-                                                                     na.rm = T,
-                                                                     color=
-                                                                       "black") + theme_cowplot() +
+UltimateFactor  %>% 
+  ggplot(aes(LK_CODE,MusselMass )) + 
+  stat_summary(fun.y=mean, 
+               geom = "bar",
+               fill="white",
+               na.rm = T,
+               color="black") + 
+  theme_cowplot() +
   stat_summary(fun.data = mean_se, geom = "errorbar", width=0.5) + 
   theme(axis.text.x = element_text(angle = 90, size = 8, vjust = 0.4)) +
   xlab("Lake Site") +
   ylab(TeX('Mussel Mass (g)'))
 
 
-######################################################################################################
-#### [hobo.eps]
+# [hobo.eps] #####################################################################################################
+
 
 setEPS()
 postscript(file="hobo.eps", width = 8, height = 10)
@@ -148,10 +306,11 @@ boxplot(log(light1+1)~month1, xaxt='n', ann=F, xlab = "Month", ylab="Light Inten
 axis(side =1,at=1:4,labels = c("July", "August", "September", "October"))
 title("C", adj = 0)
 dev.off()
-######################################################################################################
-# [congenerbar.eps]
 
-cong_sum <- UltimateFactor %>% gather(congener, average, Nodul:MC_LF) %>%
+# [congenerbar.eps] ######################################
+
+cong_sum <- UltimateFactor %>% 
+  gather(congener, average, Nodul:MC_LF) %>%
   group_by(LK_CODE, congener) %>%
   summarise_each(funs(mean),average_average=average)
 a<-cong_sum %>% 
@@ -219,8 +378,7 @@ plot_grid(a,b, ncol = 2,
           rel_widths = c(1,1/3))
 ggsave("congenerbar.eps", device = "eps" , width = 6, height = 5.5)
 
-######################################################################################################
-## spatttboxplotlake.eps
+# spatttboxplotlake.eps ##################################
 A <-  UltimateFactor %>%
   ggplot(aes(x=LK_CODE, y=SUM)) + 
   stat_summary(fun.y=mean, geom = "bar", fill="white",
@@ -264,8 +422,7 @@ D <- UltimateFactor %>%
 plot_grid(A,C,B,D, labels ="AUTO", align = "v", ncol = 2, hjust = -0.1)
 ggsave("spatttboxplotlake.eps", device="eps")
 
-######################################################################################################
-## watboxplotlake
+# watboxplotlake ###################################################################################################
 A <-  UltimateFactor %>% 
   ggplot(aes(x=LK_CODE, y=pH)) + 
   geom_boxplot() +
@@ -305,14 +462,10 @@ ggsave("watboxplotlake.eps",height = 9, units = "in", device="eps")
 
 
 
-######################################################################################################
-
-library(latex2exp)
-library(tidyverse)
-library(viridis)
-library(cowplot)
-
-cong_spatt <- UltimateFactor %>% gather(congener, average, S_D_Asp3_RR:S_MC_LW) %>% group_by(LK_CODE, congener) %>%
+# spatts bar graph #######################################
+cong_spatt <- UltimateFactor %>% 
+  gather(congener, average, S_D_Asp3_RR:S_MC_LW) %>% 
+  group_by(LK_CODE, congener) %>%
   summarise_at(vars(average), mean, na.rm=TRUE)
 
 
@@ -320,7 +473,17 @@ cong_spatt <- UltimateFactor %>% gather(congener, average, S_D_Asp3_RR:S_MC_LW) 
 a<-  cong_spatt %>% 
   ggplot(aes(x=LK_CODE, y=average, fill=congener, width=1)) + 
   geom_bar(stat="identity")  + 
-  scale_fill_viridis(discrete=TRUE,option="B", label=c( "[D-Asp3] MC-RR","[D-Atsp3] MC-LR",    "MC-HilR", "MC-HtyR","MC-LA", "MC-LR",  "MC-LW", "MC-LY","MC-RR", "MC-WR", "MC-YR", "Nodularin")) +
+  scale_fill_viridis(discrete=TRUE,option="B", label=c( "[D-Asp3] MC-RR",
+                                                        "[D-Atsp3] MC-LR",
+                                                        "MC-HilR",
+                                                        "MC-HtyR",
+                                                        "MC-LA", 
+                                                        "MC-LR",  
+                                                        "MC-LW", 
+                                                        "MC-LY","MC-RR",
+                                                        "MC-WR", 
+                                                        "MC-YR", 
+                                                        "Nodularin")) +
   
   theme_classic() + 
   theme(axis.text.x = element_text(angle = 90, size = 8, vjust = 0.4),
@@ -368,7 +531,7 @@ plot_grid(a,b, ncol = 2, rel_heights = c(10, 0.1),rel_widths = c(1,1/3))
 
 ggsave("barspatts.eps", device="eps")
 
-
+# simple congener of spatts ###############################
 UltimateFactor %>% 
   gather(Congener, Concentrations, S_D_Asp3_RR:S_MC_LW) %>%
   ggplot(aes(Congener,Concentrations )) + stat_summary(fun.y=mean, geom = "bar", fill=

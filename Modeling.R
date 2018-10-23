@@ -2,8 +2,8 @@ library(car)
 library(lme4)
 # install.packages("MuMIn") 
 
-
-# SUM~Developed
+###################################################
+# SUM~Developed ####################################
 Model <- lm(SUM~Developed, 
             data=MCSUMresponseAverage)
 Anova(Model, test.statistic = "F")
@@ -24,13 +24,13 @@ Model1  <- lmer(SUM~OP + phyco + (1|LK_CODE),
 summary(Model1)
 Anova(Model1, test.statistic = "F")
 
-# Forest
+# Forest ##########################################
 
 UltimateFactor %>% group_by(Month) %>% summarise(mean=median(hobotemp, na.rm=T))
 
 LOGTransformed %>% group_by(Month) %>% summarise(mean=mean(hobotemp, na.rm=T))
 
-# Phyco
+# Phyco ############################################
 
 Model <- lm(SUM~phyco,
           data = MCSUMresponseAverage)
