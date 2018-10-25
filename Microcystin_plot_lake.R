@@ -279,7 +279,7 @@ a<-aa %>%
   theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
         legend.key.height = unit(1.8,"line"),
         legend.title  = element_blank()) +
-  ylab(TeX('\\frac{ng of MC}{g of resin per day')) +
+  ylab(TeX('\\frac{ng of MC}{g of resin x day')) +
   xlab("  ") + 
   scale_y_continuous(limits = c(0,800))
 b<-ss %>% 
@@ -303,7 +303,7 @@ b<-ss %>%
   theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
         legend.key.height = unit(1.8,"line"),
         legend.title  = element_blank()) +
-  ylab(TeX('\\frac{ng of MC}{g of resin per day')) +
+  ylab(TeX('\\frac{ng of MC}{g of resin x day')) +
   xlab(" ") + 
   scale_y_continuous(limits = c(0,800))
 
@@ -328,7 +328,7 @@ c<-oo %>%
   theme(axis.text.x = element_text(angle = 90, size = 7, vjust = 0.4),
         legend.key.height = unit(1.8,"line"),
         legend.title  = element_blank()) +
-  ylab(TeX('\\frac{ng of MC}{g of resin per day')) +
+  ylab(TeX('\\frac{ng of MC}{g of resin x day')) +
   xlab("Lakes") + 
   scale_y_continuous(limits = c(0,800))
 
