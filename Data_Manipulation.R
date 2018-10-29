@@ -277,6 +277,10 @@ MCSUMresponseAverage <- UltimateFactor  %>%
          -ecoregion, -surveyor, -ELISA,
          -S_D_Asp3_RR:-S_ELISA)
 
+# Export data to csv
+write_csv(MCSUMresponseAverage, path = "MCSUMresponseAverage.csv")
+write_csv(LOGTransformed, path = "LOGTransformed.csv")
+write_csv(UltimateFactor, path = "UltimateFactor.csv")
 ########################################################################
 ########################################################################
 ########################################################################

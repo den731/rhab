@@ -6,7 +6,6 @@ library(tidyverse)
 # Sum as response variable
 Fullsubset <- regsubsets(SUM ~ .,
                          nbest = 5,
-                         #force.in = "OP",
                          really.big = T,
                          method="exhaustive",
                          nvmax =3,
@@ -19,9 +18,23 @@ zFull2 <- regsubsets(X16SRNA ~.,
                      MCSUMresponseAverage, 
                      method = "exhaustive")
 
+ReducedSUM <- regsubsets(SUM ~ turb + 
+                          WtShArea + 
+                          OP +
+                          phyco,
+                         nvmax = 3,
+                         nbest=5,
+                        data=MCSUMresponseAverage)
 
-
-# 16srna as response variable
+ReducedX16 <- regsubsets(X16SRNA ~ chloro +
+                           turb +
+                           hobotemp +
+                           LkWshRatio +
+                           precip30 +
+                           Forest,
+                         nvmax = 3,
+                         nbest = 5,
+                         data=MCSUMresponseAverage)
 
 ############### Show plots ###########################
 
@@ -30,7 +43,16 @@ plot(Fullsubset)
 # 16sRNA plot
 plot(zFull2)
 
-
+# reduced SUM plot
+setEPS()
+postscript(file="subset2.eps")
+plot(ReducedSUM)
+dev.off()
+# reduced 16srna plot
+setEPS()
+postscript(file="subset3.eps")
+plot(ReducedX16)
+dev.off()
 ####################### [Thesis Subset.eps] #########
 # SUM as response variable
 setEPS()
