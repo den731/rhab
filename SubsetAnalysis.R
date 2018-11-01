@@ -1,6 +1,12 @@
 ################# SUBSET PACKAGES ####################
 library(leaps)
-library(tidyverse)
+# library(tidyverse)
+# library(dplyr)
+# Import data ##########################
+MCSUMresponseAverage <- read_csv("MCSUMresponseAverage.csv", col_names = TRUE)
+LOGTransformed <- read_csv("LOGTransformed.csv", col_names = TRUE)
+UltimateFactor <- read_csv("UltimateFactor.csv", col_names = TRUE)
+
 ################# PLOTS ###############################
 
 # Sum as response variable

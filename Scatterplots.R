@@ -104,11 +104,11 @@ dev.off()
 setEPS()
 postscript(file="plot2.eps")
 par(mfrow=c(1,2))
-plot(MCSUMresponseAverage$SUM~MCSUMresponseAverage$turb, xlab = "log10(turb)", ylab = "log10(MC)")
+plot(MCSUMresponseAverage$SUM~MCSUMresponseAverage$turb, xlab = "log10(Turbidity)", ylab = "log10(MC)")
 abline(lm(SUM~turb, data=MCSUMresponseAverage))
 title("A", adj = 0)
-plot(MCSUMresponseAverage$SUM~MCSUMresponseAverage$OP, xlab = "log10(OP)" , ylab = " ")
-abline(lm(SUM~OP, data=MCSUMresponseAverage))
+plot(MCSUMresponseAverage$SUM~MCSUMresponseAverage$WtShArea, xlab = "log10(Watershed Area)" , ylab = " ")
+abline(lm(SUM~WtShArea, data=MCSUMresponseAverage))
 title("B", adj = 0)
 dev.off()
 
@@ -133,3 +133,15 @@ Omit <- MCSUMresponseAverage %>% slice(c(-26,-4))
 Model <- (lm(OP~turb, data=Omit))
 summary(Model)
 Anova(Model, test.statistics="F")
+
+# residual.eps
+Model3 <- lm(SUM ~ turb,
+               data=MCSUMresponseAverage)
+
+setEPS()
+postscript(file="residual.eps")
+plot(residuals(Model3)~MCSUMresponseAverage$WtShArea,
+     xlab="log10(Watershed Area)",
+     ylab="Residuals of log10(MC) ~ log10(turbidity)" )
+abline(lm(residuals(Model3)~MCSUMresponseAverage$WtShArea))
+dev.off()
