@@ -1,4 +1,7 @@
-
+## Import ##
+MCSUMresponseAverage <- read.csv("MCSUMresponseAverage.csv", header = TRUE)
+LOGTransformed <- read.csv("LOGTransformed.csv", header = TRUE)
+UltimateFactor <- read.csv("UltimateFactor.csv", header = TRUE)
 
 #### SUM~Turb graph
 

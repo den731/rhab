@@ -4,6 +4,11 @@ library(latex2exp)
 library(viridis)
 library(cowplot)
 library(reshape2)
+library(dplyr)
+##################### Import Data #################
+MCSUMresponseAverage <- read.csv("MCSUMresponseAverage.csv", header = TRUE)
+LOGTransformed <- read.csv("LOGTransformed.csv", header = TRUE)
+UltimateFactor <- read.csv("UltimateFactor.csv", header = TRUE)
 
 # 16s rRNA averaged########################################################################################################
 # bar16srna.eps
