@@ -1,7 +1,12 @@
-You can load the Slimmed.Rproj in Rstudio to load the project.
+DATA
+======
+- [MasterSheet.csv](MasterSheet.csv) contains all the collected data
+- [NAMES.csv](Names.csv) lists all the row header and the information on the [MasterSheet.csv](MasterSheet.csv)
+
+RUN
+======
+
 If you are using the R-console:
-    Load the data by running Data_Manipulation.R file. This loads the data in your environment.
-    The Libraries.R loads other neccessary packages for other functions
-    Each file ending in .R are some subset of analysis.
+- Load the data by running [Data_Manipulation.R file](Data_Manipulation.R). This compiles the data.
 
 For inquiry, email me: hamzah.ansari@protonmail.com
