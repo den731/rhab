@@ -13,14 +13,27 @@ UltimateFactor <- read.csv("UltimateFactor.csv", header = TRUE)
 
 #################### DR. RAFFEL 11/05/18 ##################
 
+# output, ordered by BIC, Adjusted R2, or Cp (equal to AIC when using Gaussian 
+# errors).  Default is sort=?adjr2?
+#
+# Usage:
+# summary.ordered(object, sort=c("adjr2", "cp", "bic"))
 
 
 
 
 
+model <- lm(SUM~OP,
+            data=MCSUMresponseAverage)
 
+Anova(model)
+summary(model)
+plot(model)
+abline(model)
+fk
 
 
+model <- lm()
 
 
 
@@ -66,21 +79,18 @@ UltimateFactor <- read.csv("UltimateFactor.csv", header = TRUE)
 
 
 
+model <- lm(SUM~turb+WtShArea,
+            data=MCSUMresponseAverage)
+Anova(model)
 
+model <- lm(SUM~WtShArea,
+            data=MCSUMresponseAverage)
+Anova(model)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+plot(model)
+summary(model)
+plot(MCSUMresponseAverage$SUM~MCSUMresponseAverage$WtShArea)
+abline(model)
 
 
 
@@ -185,10 +195,12 @@ sub7 <- regsubsets(OP ~ Forest + Agriculture + Barren + Shrubs + Wetlands,
                    data=MCSUMresponseAverage)
 plot(sub7)
 #################
-model <- lm(SUM~TKN,
+model <- lm(SUM~chloro,
+            data=MCSUMresponseAverage)
+model <- lm(SUM~MCYE,
             data=MCSUMresponseAverage)
 Anova(model)
-plot(MCSUMresponseAverage$SUM~MCSUMresponseAverage$TKN)
+plot(MCSUMresponseAverage$SUM~MCSUMresponseAverage$chloro)
 abline(model)
 # Not signifigant, but positive correlation (p=0.10)
 model <- lm(NO3~Developed,

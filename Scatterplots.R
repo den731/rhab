@@ -54,13 +54,28 @@ cf <- round(coef(lm(SUM~OP, data=MCSUMresponseAverage)), 2)
 ## Get equation
 eq <- paste0("log10(MC Sum) = ", 
              abs(cf[2]), " log10(OP) +", cf[1])
-plot(MCSUMresponseAverage$SUM~MCSUMresponseAverage$OP, xlab="log(ortho-P)", ylab = "log(MC Sum)")
+setEPS()
+postscript(file="op1.eps")
+plot(MCSUMresponseAverage$SUM~MCSUMresponseAverage$OP, xlab="log 10(orthophosphate)", ylab = "log(MC Sum)")
+points(MCSUMresponseAverage$OP[4],MCSUMresponseAverage$SUM[4], col="red", pch="O")
+points(MCSUMresponseAverage$OP[26],MCSUMresponseAverage$SUM[26], col="red", pch="O")
 abline(lm(MCSUMresponseAverage$SUM~MCSUMresponseAverage$OP))
+dev.off()
 mtext(eq, 3, line=-2)
 
 omitted <- MCSUMresponseAverage %>%
-  slice(c(-25,-4,-26))
+  slice(c(-4,-26))
+setEPS()
+postscript(file="op2.eps")
+plot(omitted$SUM~omitted$OP, xlab="log 10(orthophosphate)", ylab = "log(MC Sum)")
+abline(lm(omitted$SUM~omitted$OP))
+dev.off()
 
+model <- lm(X16SRNA~turb,
+            data=MCSUMresponseAverage)
+Anova(model)
+plot(model)
+summary(model)
 ## Get coeffient
 cf <- round(coef(lm(SUM~OP, data=omitted)), 2) 
 ## Get equation

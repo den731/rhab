@@ -14,8 +14,10 @@ Fullsubset <- regsubsets(SUM ~ .,
                          nbest = 5,
                          really.big = T,
                          method="exhaustive",
-                         nvmax =3,
+                         nvmax =2,
+                         force.out=c("MCYE","OP", "Max_Depth", "precip3", "turb"),
                          data=MCSUMresponseAverage)
+summary.ordered(Fullsubset)
 # 16sRNA as response variable
 zFull2 <- regsubsets(X16SRNA ~.,
                      nbest=5,

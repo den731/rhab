@@ -8,5 +8,4 @@ RUN
 
 If you are using the R-console:
 - Load the data by running [Data_Manipulation.R file](Data_Manipulation.R). This compiles the data.
-
-For inquiry, email me: hamzah.ansari@protonmail.com
+- Have fun kido
