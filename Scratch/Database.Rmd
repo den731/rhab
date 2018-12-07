@@ -1,0 +1,38 @@
+---
+title: "Data Collection With Open-Source Solutions"
+author: "Hamzah Ansari"
+output:
+  pdf_document:
+    latex_engine: lualatex
+    number_section: yes
+    toc: yes
+    toc_depth: 5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Data collection
+
+Large scale studies are often done by a team of multiple groups and organiziations. Data aggregation and structural collection is one of the few key factors that determines the quality of the study. A 
+
+
+
+## Server Setup
+
+Here we must setup a server that stores our data and be accessible through the internet. Having your own computer machine as a server is a viable solution but it requires more extensive networking knowledge. An alternative solution is to purchase a rent a server from a third party which automatically sets up and quickly gets connected to the internet. 
+
+A Virtual Private Server (VPS) are cheap and flexible servers to set up a database up on the cloud. For as little as $5 dollars a month one can have a server with everything they need to start collecting data.
+
+DigitalOcean, Amazon (free trial for a year), Google VPS can work. I suggest anyone of them, but in this guide we will choose to setup from DigitalOcean as its the cheapest available. I reccomend Debian or Ubuntu linux distro to setup our database. here we will choose Debian 9 (Stretch). 
+
+Use your SSH client. For Linux or Mac, use terminal. Windows could use putty. Access your server by SSH. You need to know what the IP address is for your server, the user name and password. Usually this is emailed to you from the providor. 
+
+The command for terminal is 
+
+`ssh root@XXX.XXX.XXX.XXX)`
+
+where `root` is the username. 
+

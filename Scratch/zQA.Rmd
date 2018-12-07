@@ -1,0 +1,106 @@
+---
+title: "Follow-up Report"
+author: "Hamzah Ansari"
+output: 
+  pdf_document: 
+    latex_engine: lualatex
+---
+
+```{r setup, include=FALSE}
+
+```
+
+```{r Import Data and some Manipulated tables, include=FALSE}
+
+```
+
+Dear particpants,
+
+We recieved a number of questions about our reports recently sent out. Some have asked what does it say about your lake, is the nutrients too high, etc... We appologize if we caused confusion or if the report seems unclear and we should have given more background information. We hope to clear some confusion about your reports and what the data means about your lake. 
+
+# Our Goal
+
+First, our survey is soley focusing on Harmful Algal Blooms (HABs) and the suite of toxins it can produce. We can not completly address the health of the whole lake as that requires a more comprehensive study. Our reports can only conclude whether you have HABs and the concentrations of toxins. 
+
+The toxin we are focusing on in particular is microcystins. Microcystin is a liver toxin and dangerous when consumed in large amounts. The most dangerous thing about this toxin is if your lake provides drinking water. There is also a risk of swimming in a lake with this toxin. For more information, the DNR has excellent information here:
+
+https://www.uwsp.edu/cnr-ap/UWEXLakes/Documents/programs/CBCW/publications/Algal-toxins.pdf 
+
+
+We assess your lake by measuring various chemical parameters and the lake's watershed. We do this so we can understand more as to how algal blooms occur.
+
+# Map of the Lake's Watershed
+
+Water flow plays an important role with the lake. As rain pours down, it picks up dirt and nutrients and eventually gets drained to the lake. A watershed is the area around the lake where water flows into your lake. In other words, if rain poured down above that area, it will eventually runoff into your lake. 
+
+We mapped out your lakes watershed using a computer software called Geographic Information System (GIS). We can map out the watershed based on using elevation data. This basically draws a boundary line around the lake. Then we can grab some data about what kind of land is around your lake. This can tell how much is agriculture, forest, water, etc.. 
+
+
+In your reports, we incluced a map of your lake's watershed and type of land use is mostly comprised of. The reason why we are looking at land use is because of the potential nutrient sources, most notably agriculture and developed areas (denoted as yellow and red). We will be using this data for statistical analysis. We include this map in your report to provide some information about your lake. 
+
+If you are curious about this software where is where to get the data, here is some information
+:
+
+https://www.qgis.org/en/site/
+
+https://nationalmap.gov/elevation.html
+
+https://landcover.usgs.gov/
+
+# Microcystin Results
+
+Microcystin actually comes in all different types. They are reffered as congeners. The most common congener is MC-LA and MC-LR. We have taken a step further and looked at a total of 12 different congeners.
+
+There are two ways of measuring microcystins. The most commonly used method which EPA and other state agencies uses is whats called an ELISA (Enzyme Link Immunosorbant Assay), and Mass Spec. ELISA measures only a few congeners, where as the mass spec looks at all 12. In your report, we included results from both types of measurements. The main graph to be concerned with is the first graph (Total MC from Grab Samples). This is the result from our water sample. If the result is above the EPA guideline of 4 micrograms per liter (4$\mu$g/L), then the lake is deemed unsafe.
+
+
+# What are SPATTS?
+
+SPATTS stand for Solid Phase Adsorbtion Toxin Tracking
+
+It is a new technique where we are exploring an alternative way of sampling. In essence, its like a tea bag that stays on a float in the lake for the whole month. There are plastic beads that picks up any toxin that we missed in our grab sample. We pick those up every month and extract the contents of what it picks up and measure how much toxins are there. This number tells us how much of the toxins have stuck to those plastic beads. 
+
+This is new technique. We can not say what levels of toxins from this technique is unsafe. We can provide the averages of this level so far. You can see how your lake is compared to our data.  
+
+
+
+
+
+Here is each of the congeners found in the SPATTS.
+
+* `N` = Number of observation (How many samples)
+
+* `Mean` = Average of the whole data for that congeners
+
+* `St. Dev` = How much of that value varies
+
+* `Min` = The minimum amount found
+ 
+* `Max` = Maximum amount found
+
+
+# Nutrient Levels
+
+
+There is no known number to see if nutrient levels are above a certain level. The reason whys is because each lake is unique, and nutrient levels are always different through time.  We can categorize the lake by a different approach called a Trophic State Index (TSI). This measures how rich the lake's nutrients are based on total phosphorus, turbidity and chloraphyll. 
+
+None of any of our lakes had levels that were extreme. 
+
+
+
+The mean of each nutrient is a vertical line. 
+
+Based on our data from all the other lakes, you can compare your nutrient results to the mean of the rest of the sampled lakes.
+
+Here we list a table of nutrients and the averages. 
+
+
+
+\newpage
+
+
+
+
+
+
+
