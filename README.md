@@ -4,8 +4,8 @@ This will be update soon!
 
 DATA
 ======
-- [MasterSheet.csv](MasterSheet.csv) contains all the collected data
-- [NAMES.csv](Names.csv) lists all the row header and the information on the [MasterSheet.csv](MasterSheet.csv)
+- [MasterSheet.csv](MasterSheet.csv) contains all the collected data. All the wet chemicistry data was aggregated from the analysis, also includes the meter reading data.
+- [MasterSheet_header_info.csv](MasterSheet_header_info.csv) lists all the row header and the information on the [MasterSheet.csv](MasterSheet.csv)
 
 RUN
 ======
