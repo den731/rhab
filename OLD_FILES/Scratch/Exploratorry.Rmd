@@ -1,0 +1,2099 @@
+w
+## Scatterplot Matrix
+
+Nutrients, ELISA, and mass spec data was log10 transformed with an added corresponding reportable detection limit.
+
+\newpage
+\blandscape
+
+
+```{r, fig.width=14, fig.height=10, fig.cap= "Full dataset scatterplot matrix"}
+#install.packages("corrplot")
+#install.packages("PerformanceAnalytics")
+library(PerformanceAnalytics)
+library(corrplot)
+
+# LogTransformed Averages for each lake code         
+lkcode_grp <- UltimateFactor %>%
+  group_by(LK_CODE) %>% select(LK_CODE, OP:phyco) %>%
+  summarise_all(funs(mean(.,na.rm = TRUE))) %>%
+  mutate_at(vars(OP:TKN, Nodul:S_ELISA), funs(log1p(.))) %>%
+  mutate_at(vars("X16SRNA", MCYE, do:phyco), funs(log(.)))
+
+# Joined LogTransformed Averages with land use 
+model <- full_join(info, lkcode_grp, by = "LK_CODE")
+
+model1 <- full_join(info, lkcode_grp, by = "LK_CODE") %>% 
+  mutate_at(vars(Water:Wetlands), funs(./100))
+
+fullmod <- full_join(info, MonthOrdered, by ="LK_CODE") %>%
+  mutate_at(vars(Water:Wetlands), funs(./100))
+
+# Subsets for scatterplot matrix. Log transformed
+grabNutes <- UltimateFactor %>% 
+  select(LK_CODE, month, NOX, OP, NH3, TP, TKN, ELISA, SUM,TNTP) %>% 
+  mutate_at(vars(NOX, OP, NH3, TP, TKN, ELISA, SUM), funs(log1p(.)))
+
+spattNutes <- UltimateFactor %>% 
+  select(LK_CODE, month, NOX, OP, NH3, TP, TKN, S_ELISA, S_SUM) %>% 
+  mutate_at(vars(NOX, OP, NH3, TP, TKN, S_ELISA, S_SUM), funs(log1p(.)))
+
+cong_lk <- UltimateFactor %>%
+  select(LK_CODE, Nodul:ELISA) %>% 
+  group_by(LK_CODE) %>% summarise_all(funs(mean(.,na.rm = TRUE))) %>%
+  rowwise() %>% 
+  mutate(sumz = sum(Nodul,D_Asp3_RR, MC_RR, MC_YR, MC_HTyR, MC_LR, D_Asp3_LR, MC_HiLR, MC_WR, MC_LA, MC_LY, MC_LW, MC_LF, na.rm = TRUE)) %>% 
+  mutate_at(vars(Nodul:MC_LF), funs(./sumz)) %>% 
+  mutate_at(vars(Nodul:MC_LF), funs(.*100))
+
+cong_sp <- UltimateFactor %>%
+  select(LK_CODE, S_D_Asp3_RR:S_ELISA) %>% 
+  group_by(LK_CODE) %>% summarise_all(funs(mean(.,na.rm = TRUE))) %>%
+  rowwise() %>% 
+  mutate(sumz = sum(S_Nodul,S_D_Asp3_RR, S_MC_RR, S_MC_YR, S_MC_HtyR, S_MC_LR, S_D_Asp3LR, S_MC_HilR, S_MC_WR, S_MC_LA, S_MC_LY, S_MC_LW, S_MC_LF, na.rm = TRUE)) %>% 
+  mutate_at(vars(S_D_Asp3_RR:S_MC_LF), funs(./sumz)) %>% 
+  mutate_at(vars(S_D_Asp3_RR:S_MC_LF), funs(.*100))
+
+# Tables for congeners barplots as percentages
+cong_sum <- cong_lk %>% gather(congener, percentage, Nodul:MC_LF)
+
+landus_sum <- model %>% gather(LandUse, percentage, Water:Wetlands)
+
+cong_sum_sp <- cong_sp %>% gather(congener, percentage, S_D_Asp3_RR:S_MC_LF)
+
+cong_1 <- inner_join(
+  cong_sum, Lake_info_comprehensive, by = "LK_CODE"
+  ) %>% 
+  select(LK_CODE, congener, percentage, Lat)
+
+cong_2 <- inner_join(
+  cong_sum_sp, Lake_info_comprehensive, by = "LK_CODE"
+  ) %>% 
+  select(LK_CODE, congener, percentage, Lat)
+#
+
+
+
+
+
+zzchemicalLogged <- MCSUMresponseAverage  %>%
+  rename("MC Sum from Mass Spec" = SUM) %>%
+#rename("Day of Year" = doy) %>%
+  rename("Orthophosphate" = OP) %>%
+  rename("Nitrate+Nitrite" = NOX) %>%
+  rename("Ammonia" = NH3) %>%
+  rename("Total Phosphorus" = TP) %>%
+  rename("Total K-Nitrogen" = TKN) %>%
+  rename("Total N:Total P" = TNTP) %>%
+  rename("Total Nitrogen" = TN) %>%
+  rename("16srRNA Gene Copies" = X16SRNA) %>%
+  rename("mcyE Gene Copies" = MCYE) %>%
+  rename("Temprature" = wtemp) %>%
+  rename("Dissolved Oxygen" = do) %>%
+  rename("Conductance" = conduc) %>%
+  rename("Turbidity" = turb) %>%
+  rename("Chloraphyll" = chloro) %>%
+  rename("Phycocyanin" = phyco) %>%
+  rename("Lake Area" = Lake_Area_sqKm) %>%
+  rename("Watershed Area" = Watershed_Area_sqKm) %>%
+  rename("3 Day Average Precipitation" = precip3) %>%
+  rename("5 Day Average Precipitation" = precip5) %>%
+  rename("7 Day Average Precipitation" = precip7) %>%
+  rename("30 Day Average Precipitation" = precip30) %>%
+  rename("Ambient 3 Day Average Temperature" = temp3ambient) %>%
+  rename("Ambient 5 Day Average Temperature" = temp5ambient) %>%
+  rename("Ambient 7 Day Average Temperature" = temp7ambient) %>%
+  rename("Ambient 30 Day Average Temperature " = temp30ambient) %>%
+  rename("Water Temperature from Hobopendant" = hobotemp) %>%
+  rename("Light intensity from Hobopendant" = hobolight) %>%
+  rename("Water Temperature at Sampling" = Temprature) 
+
+
+zchemicalLogged <- MCSUMresponseAverage
+  
+
+
+zchemical <- cor(zzchemicalLogged, use = "complete.obs")
+
+
+png(width = 1400, height = 800, res = 150,pointsize = 10, file="uppmatrix.png")
+corrplot.mixed(zchemical, lower.col="black", diag = "n",upper = "shade", addgrid.col ="light blue", tl.pos = "lt", number.cex=0.4, tl.col = "black" )
+dev.off()
+pairs(zchemicalLogged)
+
+corrplot(zchemical,method = "shade", type="lower", diag = F,tl.srt = 45 , tl.col = "black", addgrid.col = "grey", hclust.method = "single" )
+
+
+
+
+```
+  
+\elandscape
+
+\newpage
+\blandscape
+
+
+
+
+
+
+
+
+### Nutrients
+
+
+```{r}
+MonthOrdered %>% ggplot(aes(x=month, y=(pH))) + geom_point() 
+```
+
+
+```{r, fig.width=14, fig.height=10}
+
+
+
+ggpairsMonthNuts <- LOGTransformed %>% 
+  select(Month, OP:TNTP, SUM) 
+
+p <- ggpairs(ggpairsMonthNuts,
+        aes(colour=month), 
+        #columns=c("NOX","NH3", "OP", "TKN", "TP", "month","SUM"), columnLabels = c("Nitrate+Nitrite", "Ammonia", "Orthophosphate", "Total K Nitrogen", "Total Phosphorus", "Month","MC Sum from LC MS/MS"), 
+        upper = list(continuous = wrap(ggally_cor, size = 3)), lower=list(continuous = 'smooth')) + theme_classic()
+
+p
+```
+
+
+
+\newpage
+
+```{r, fig.width=14, fig.height=10}
+
+
+
+ggpairsMonthNutsSPatts <- LOGTransformed %>% 
+  select(month, OP:TNTP, S_SUM) 
+
+ ggpairs(ggpairsMonthNutsSPatts,
+        aes(colour=month), 
+        #columns=c("NOX","NH3", "OP", "TKN", "TP", "month","SUM"), columnLabels = c("Nitrate+Nitrite", "Ammonia", "Orthophosphate", "Total K Nitrogen", "Total Phosphorus", "Month","MC Sum from LC MS/MS"), 
+        upper = list(continuous = wrap(ggally_cor, size = 3)), lower=list(continuous = 'smooth')) + theme_classic()
+
+
+```
+
+
+
+### Land Use
+
+```{r test12, message=FALSE, warning = FALSE, echo = FALSE, fig.width=14, fig.height=10}
+LandUseGGPAIRS1 <- LOGTransformed %>% select(OP, NOX, NH3, Water:Wetlands,High_impervious, SUM) 
+ggpairs(LandUseGGPAIRS1,   upper = list(continuous = wrap(ggally_cor, size = 3)), lower=list(continuous = 'smooth')) +
+        #columnLabels = c("Water", "Developed", "Barren", "Forest", "Shrubs", "Herbaceous", "Agriculture", "Wetlands", "Sum of MC ")) 
+         theme_classic()
+```
+
+
+\newpage
+
+### Water Chemistry
+
+```{r chemical, message=FALSE, warning = FALSE, echo = FALSE, fig.width=14, fig.height=10}
+zmatrixChemical <- LOGTransformed %>% select(OP:TKN,  pH, do, conduc,turb,chloro,phyco, SUM) 
+ggpairs(zmatrixChemical,   upper = list(continuous = wrap(ggally_cor, size = 3)), lower=list(continuous = 'smooth')) +
+        #columnLabels = c("Water", "Developed", "Barren", "Forest", "Shrubs", "Herbaceous", "Agriculture", "Wetlands", "Sum of MC ")) 
+         theme_classic()
+```
+
+
+\elandscape
+
+
+
+
+
+```{r,fig.width=9, fig.height=8}
+zLandUse <- UltimateFactor %>% 
+  mutate_at(vars(OP:TNTP, SUM), funs(log1p(.))) %>%
+  select(OP:TNTP,   85:88, 32)
+zlanduseCor <- cor(zLandUse, use = "complete.obs")
+
+corrplot(zlanduseCor,  type = "lower", tl.col = "black", tl.srt = 45, diag = FALSE, number.digits = 2 )
+```
+
+
+
+
+```{r, fig.width=9, fig.height=8}
+
+
+zcongeners <- MonthOrdered %>% select(19:33) %>%
+   mutate_all(funs(log10(.+0.03))) %>% mutate(DELTA = ELISA-SUM)
+names(zcongeners) <- c("Nodularin", "[D-Asp3]MC-RR", "MC-RR", "MC-YR", "MC-HtyR", "MC-LR", "[D-Asp3]MC-LR", "MC-HilR", "MC-WR", "MC-LA", "MC-LY","MC-LW", "MC-LF", "MC Sum from LC MS/MS ", "MC from ELISA", "DELTA")
+
+zcorcongener<-cor(zcongeners, use = "complete.obs")
+
+corrplot(zcorcongener,  type = "lower", tl.col = "black", tl.srt = 45, diag = FALSE, title = "MC Congeners", number.digits = 2 )
+```
+
+
+```{r}
+
+#Get congeners as zeros and ones by reportable detection limit
+RDL_Congeners <- UltimateFactor %>% 
+  select(1,2,19:33) %>% 
+  mutate(Nodul = if_else(Nodul > 0.03, 1,0)) %>% 
+  mutate(D_Asp3_RR = if_else(D_Asp3_RR > 0.03, 1,0)) %>%
+  mutate(MC_RR = if_else(MC_RR > 0.03, 1,0)) %>%
+  mutate(MC_YR = if_else(MC_YR > 0.03, 1,0)) %>%
+  mutate(MC_HTyR = if_else(MC_HTyR > 0.03, 1,0)) %>%
+  mutate(MC_LR = if_else(MC_LR > 0.03, 1,0)) %>%
+  mutate(D_Asp3_LR = if_else(D_Asp3_LR > 0.03, 1,0)) %>%
+  mutate(MC_HiLR = if_else(MC_HiLR > 0.03, 1,0)) %>%
+  mutate(MC_WR = if_else(MC_WR > 0.03, 1,0)) %>%
+  mutate(MC_LA = if_else(MC_LA > 0.03, 1,0)) %>%
+  mutate(MC_LY = if_else(MC_LY > 0.03, 1,0)) %>%
+  mutate(MC_LW = if_else(MC_LW > 0.03, 1,0)) %>%
+  mutate(MC_LF = if_else(MC_LF > 0.03, 1,0)) %>%
+  mutate(SUM = if_else(SUM > 0.03, 1,0)) %>%
+  mutate(ELISA = ifelse(ELISA > 0.15, 1,  0))
+  #This is an example to keep all other values the same
+  #mutate(ELISA = case_when(ELISA > 0.5 ~ 1, TRUE ~ ELISA))
+
+
+
+#Get congeners as zeros and ones by reportable detection limit
+RDL_Congeners <- MonthOrdered %>% 
+  select(63,2,19:33) %>% 
+  mutate(Nodul = if_else(Nodul >= 0.03, 1,0)) %>% 
+  mutate(D_Asp3_RR = if_else(D_Asp3_RR >= 0.03, 1,0)) %>%
+  mutate(MC_RR = if_else(MC_RR >= 0.03, 1,0)) %>%
+  mutate(MC_YR = if_else(MC_YR >= 0.03, 1,0)) %>%
+  mutate(MC_HTyR = if_else(MC_HTyR >= 0.03, 1,0)) %>%
+  mutate(MC_LR = if_else(MC_LR >= 0.03, 1,0)) %>%
+  mutate(D_Asp3_LR = if_else(D_Asp3_LR >= 0.03, 1,0)) %>%
+  mutate(MC_HiLR = if_else(MC_HiLR > 0.03, 1,0)) %>%
+  mutate(MC_WR = if_else(MC_WR >= 0.03, 1,0)) %>%
+  mutate(MC_LA = if_else(MC_LA >= 0.03, 1,0)) %>%
+  mutate(MC_LY = if_else(MC_LY >= 0.03, 1,0)) %>%
+  mutate(MC_LW = if_else(MC_LW >= 0.03, 1,0)) %>%
+  mutate(MC_LF = if_else(MC_LF >= 0.03, 1,0)) %>%
+  mutate(SUM = if_else(SUM >= 0.03, 1,0)) %>%
+  mutate(ELISA = ifelse(ELISA >= 0.15, 1,  0))
+  #This is an example to keep all other values the same
+  #mutate(ELISA = case_when(ELISA > 0.5 ~ 1, TRUE ~ ELISA))
+
+RDL_Congeners_ommitted <- MonthOrdered %>% 
+  select(63,2,19:33) %>% 
+  mutate(Nodul = case_when(Nodul <= 0.03 ~ NA_real_, TRUE ~ Nodul)) %>% 
+ mutate(D_Asp3_RR = case_when(D_Asp3_RR <= 0.03 ~ NA_real_, TRUE ~ D_Asp3_RR)) %>%
+  mutate(MC_RR = case_when(MC_RR <= 0.03 ~ NA_real_, TRUE ~ MC_RR)) %>%
+  mutate(MC_YR = case_when(MC_YR <= 0.03 ~ NA_real_, TRUE ~ MC_YR)) %>%
+  mutate(MC_HTyR = case_when(MC_HTyR <= 0.03 ~ NA_real_, TRUE ~ MC_HTyR)) %>%
+  mutate(MC_LR = case_when(MC_LR <= 0.03 ~ NA_real_, TRUE ~ MC_LR)) %>%
+  mutate(D_Asp3_LR = case_when(D_Asp3_LR <= 0.03 ~ NA_real_, TRUE ~ D_Asp3_LR)) %>%
+  mutate(MC_HiLR = case_when(MC_HiLR <= 0.03 ~ NA_real_ ,TRUE ~ MC_HiLR)) %>%
+  mutate(MC_WR = case_when(MC_WR <= 0.03 ~ NA_real_,TRUE ~ MC_WR)) %>%
+  mutate(MC_LA = case_when(MC_LA <= 0.03 ~ NA_real_, TRUE ~ MC_LA)) %>%
+  mutate(MC_LY = case_when(MC_LY <= 0.03 ~ NA_real_ ,TRUE ~ MC_LY)) %>%
+  mutate(MC_LW = case_when(MC_LW <= 0.03 ~ NA_real_ ,TRUE ~ MC_LW)) %>%
+  mutate(MC_LF = case_when(MC_LF <= 0.03 ~ NA_real_ ,TRUE ~ MC_LF)) %>%
+  mutate(SUM = case_when(SUM <= 0.03 ~ NA_real_ ,TRUE ~ SUM)) %>%
+  mutate(ELISA = case_when(ELISA >= 0.15 ~ NA_real_, TRUE  ~ ELISA))
+  
+
+RDL_Congeners_ommitted1 <- MonthOrdered %>% 
+  select(63,2,19:33) %>% 
+  mutate(Nodul = case_when(Nodul <= 0.03 ~ 0, TRUE ~ Nodul)) %>% 
+ mutate(D_Asp3_RR = case_when(D_Asp3_RR <= 0.03 ~ 0, TRUE ~ D_Asp3_RR)) %>%
+  mutate(MC_RR = case_when(MC_RR <= 0.03 ~ 0, TRUE ~ MC_RR)) %>%
+  mutate(MC_YR = case_when(MC_YR <= 0.03 ~ 0, TRUE ~ MC_YR)) %>%
+  mutate(MC_HTyR = case_when(MC_HTyR <= 0.03 ~ 0, TRUE ~ MC_HTyR)) %>%
+  mutate(MC_LR = case_when(MC_LR <= 0.03 ~ 0, TRUE ~ MC_LR)) %>%
+  mutate(D_Asp3_LR = case_when(D_Asp3_LR <= 0.03 ~ 0, TRUE ~ D_Asp3_LR)) %>%
+  mutate(MC_HiLR = case_when(MC_HiLR <= 0.03 ~ 0 ,TRUE ~ MC_HiLR)) %>%
+  mutate(MC_WR = case_when(MC_WR <= 0.03 ~ 0,TRUE ~ MC_WR)) %>%
+  mutate(MC_LA = case_when(MC_LA <= 0.03 ~ 0, TRUE ~ MC_LA)) %>%
+  mutate(MC_LY = case_when(MC_LY <= 0.03 ~ 0 ,TRUE ~ MC_LY)) %>%
+  mutate(MC_LW = case_when(MC_LW <= 0.03 ~ 0 ,TRUE ~ MC_LW)) %>%
+  mutate(MC_LF = case_when(MC_LF <= 0.03 ~ 0 ,TRUE ~ MC_LF)) %>%
+  mutate(SUM = case_when(SUM <= 0.03 ~ 0 ,TRUE ~ SUM)) %>%
+  mutate(ELISA = case_when(ELISA <= 0.15 ~ 0, TRUE  ~ ELISA)) %>% 
+  mutate(Delta = ELISA - SUM)
+
+#names(RDL_Congeners_ommitted) <- c("Nodularin", "[D-Asp3]MC-RR", "MC-RR", "MC-YR", "MC-HtyR", "MC-LR", "[D-Asp3]MC-LR", "MC-HilR", "MC-WR", "MC-LA", "MC-LY","MC-LW", "MC-LF", "MC Sum from LC MS/MS ", "MC from ELISA", "DELTA")
+
+hh <- RDL_Congeners_ommitted1 %>% select(-LK_CODE,  -MC_LY, -MC_LF, -Nodul)
+
+names(hh) <- c( "[D-Asp3]MC-RR", "MC-RR", "MC-YR", "MC-HtyR", "MC-LR", "[D-Asp3]MC-LR", "MC-HilR", "MC-WR", "MC-LA", "MC-LW",  "MC Sum from LC MS/MS ", "MC from ELISA", "Delta")
+
+cor_cong<-cor(hh, use="complete.obs")
+
+corrplot(cor_cong, method = "number", type = "lower", tl.col = "black", tl.srt = 45, diag = FALSE,  number.digits = 2 )
+```
+
+
+
+
+
+## Principal Component Analysis
+
+
+```{r}
+# All data is in object: UltimateSheet
+
+
+#Select features with only numeric values. 
+#zPC <- zUltimateSheet %>%
+ # select(8:12, 16, 32, 52,55:61,63,71,74:88,90:97)
+
+#Then impute averaged values for missing observations. 
+#PCA_FILLED <- imputePCA(as.data.frame(zPC, ncp=4))
+
+
+
+# Run PCA with the computed filled matrix
+#zPCA_MODEL <- PCA(PCA_FILLED$completeObs, 
+                 # graph = FALSE,
+                  #scale.unit = TRUE,
+                 # ncp=5)
+```
+
+
+\newpage
+
+\blandscape
+
+```{r}
+#Graph of Data
+#fviz_pca_ind(zPCA_MODEL)
+#fviz_contrib(zPCA_MODEL, choice = "var")
+```
+
+
+
+```{r}
+# Analyse the sum of the correlated values. 
+#zPCA_MODEL$eig
+
+
+#myCoor = cor(PCA_FILLED$completeObs)
+#zzz <-eigen(cor(PCA_FILLED$completeObs))
+
+#max(zzz$values)/min(zzz$values)
+
+#kappa(myCoor, exact = TRUE )
+```
+
+
+With the normalized and NA-filled values, PCA was computed. 
+The data is plotted against the first two components that explain the greatest variance of all over covariates. The axies explains 16.4% and 12.4% of the variance. 
+
+
+Next, we can observe a correlation plot. We can deduce positive and negative correlations and relationships. Vectors that are grouped together are related to each other. If any two vectors have the same direction, they are positively correlated. If the vectors are opposite, there negatively correlated.
+
+
+
+\newpage
+
+
+
+```{r, fig.width=7, fig.height=6}
+# Graph  
+#fviz_pca_var(zPCA_MODEL, repel = TRUE) + theme_classic()
+
+
+```
+
+
+SUM is positively correlated with orthophosphate, turbidity, area of medium and high impervious areas. ELISA is correlated with phycocyanin, chlorophyll and Total_impervious impervious surface.
+
+Lake area to watershed ratio shows to have a negative correlation with SUM, ELISA. Max depth of the lake also has a negative effect, although weak representation.
+
+\newpage
+
+
+
+
+**Renamed variables**
+
+\elandscape
+
+\newpage
+
+```{r}
+summary(lm(S_SUM~Wetlands, data=LOGTransformed))
+plot(LOGTransformed$S_SUM~LOGTransformed$SUM)
+LOGTransformed %>% ggplot(aes(x=SUM, y=Developed)) + geom_point() + facet_grid(.~Month)
+```
+
+## Ecoregions
+
+Our sampled lakes are spread across 5 ecoregions in Michigan. Lets observe if the averages of MC and mcyE is signifigantly different. 
+
+
+![EPA Level III Ecoregions in Michigan](Figures/Ecoregions_III.png)
+
+\newpage
+
+
+```{r, fig.cap="MC Sum Averages in Each Level III Ecoregion"}
+LOGTransformed %>% 
+  ggplot(aes(ecoregion,SUM)) +
+  geom_boxplot() +
+  ylab("Log(MC SUM)") +
+  theme(axis.text.x = element_text(angle = 90, size=7))
+```
+
+```{r, results='asis'}
+UltimateFactor %>% group_by(ecoregion) %>% summarise_all(funs(mean(.,na.rm=T))) %>% select(ecoregion, SUM) %>% kable(format = "pandoc", col.names = c("Ecoregions", "Mean MC Sum"), digits = 3)
+```
+\newpage
+
+```{r}
+LOGTransformed %>% 
+  ggplot(aes(ecoregion,S_SUM)) +
+  geom_boxplot() +
+  ylab("Log(MC SUM from SPATTs)") +
+  theme(axis.text.x = element_text(angle = 90, size=7))
+```
+
+```{r, results='asis', fig.cap=""}
+UltimateFactor %>% group_by(ecoregion) %>% summarise_all(funs(mean(.,na.rm=T))) %>% select(ecoregion, S_SUM) %>% kable(format = "pandoc", col.names = c("Ecoregions", "Mean MC Sum from SPATTs"), caption = "Average of MC from SPATTS (ng MC/g of resin)")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Present/Absent of Zebra Mussels
+
+```{r, results='asis'}
+zebraa <- UltimateFactor %>% group_by(Present_Absent_Zebra) %>% summarise_all(funs(mean(.,na.rm=T))) %>% select(Present_Absent_Zebra, SUM) %>% kable( col.names = c("Present_Absent_Zebra", "Mean MC Sum from LC-MS/MS"))
+
+zebraa
+
+
+```
+
+
+```{r, results='asis'}
+zpresent <- UltimateFactor %>% 
+  group_by(Present_Absent_Zebra) %>%  
+  select(SUM,Present_Absent_Zebra) %>% filter(Present_Absent_Zebra == "Present") 
+
+zabsent <- UltimateFactor %>% 
+  group_by(Present_Absent_Zebra) %>%  
+  select(SUM,Present_Absent_Zebra) %>% filter(Present_Absent_Zebra == "Absent")
+
+present <- zpresent$SUM
+absent <- zabsent$SUM
+
+ t.test(present, y = absent, alternative = c("greater"), mu = 0, 
+        paired = FALSE, var.equal = FALSE, conf.level = 0.95)
+ 
+
+```
+
+
+
+
+
+
+
+## Data Exploratory
+
+# Junked
+
+##  K-fold Cross-validation
+
+
+
+Here we will verify each model by K-fold cross-validation. First, the full dataset will be split into two. Roughly 66% of the full set is for training and the remaining 33% for testing. 
+
+On our training set, it is further divided into "K" folds. One fold is held away for validation, while the remaining are used to train the model. Next the trained model is validated against the validation fold. Each validation, a skill score is recorded. Here the RMSE is assessed along with its standard deviation. We can compare the RMSE between our models. The lowest RMSE is the best model. 
+
+Ultimately, the trained model will further be tested again against the 33%. If the prediction is signifigant with the actual value of the training dataset it is deemed successful model.
+
+
+
+Using the `library(caret)` package. 
+
+
+Here each model that was found to be effective from previous section is tested. If the trained model fitted against the untrained dataset has a signifigant slope, then the model does have potential predictablility power, proving to be robust.
+
+A 10 fold cross-validation with 20 repeated cycles will be done on a training dataset. K=10
+
+### Successful Models
+
+#### SUM ~ MCYE + OP 
+
+
+
+```{r, echo=FALSE}
+
+
+
+set.seed(123) 
+zdata <- LOGTransformed %>% # Only select variables of interest
+  select(SUM,   Developed, OP) %>%
+  na.omit() # Omit all NA's
+
+Dataframe <- as.data.frame(zdata) # Convert it as a dataframe
+
+# Split our Data if we wanted to test it later. However not neccesary. This seems to be the old way. 
+
+ind = createDataPartition(Dataframe$SUM, p=2/3, list=FALSE) 
+traindata <- Dataframe[ind,] # Training dataset is 66%
+testdata <- Dataframe[-ind,] # Testing dataset is 33%
+
+#I was playing around with random forest. Ignore this.
+#parameterGrid <- expand.grid(mtry=c(1,2,3)) 
+
+
+# This is a stored setting variable 
+# which sets up how the training resamples the data. 
+train_control <- trainControl(method="repeatedcv", 
+                              number =10, # The K fold
+                              repeats=20  # Repeated times
+                              
+                              # , savePredictions = TRUE
+                              )
+
+model <- train(SUM~.,
+                data=Dataframe,
+               method="lm", # glm, rf, but no lme or mixed model support
+               trControl = train_control
+               #tuneGrid = parameterGrid
+               )
+```
+
+
+
+Model Validation Performance:
+
+```{r}
+
+
+#mean(model$resample$Rsquared)
+```
+
+
+Our model: `r format(formula(model))` 
+
+
+Across all 10-fold cross-validation, the average of the root mean square deviation:
+
+(RMSE) = `r round(mean(model$resample$RMSE),2)` with $\sigma$ = `r round(sd(model$resample$RMSE),2)`. 
+
+Average $R^2$ = `r round(mean(model$resample$Rsquared),2) ` with $\sigma$ = `r round(sd(model$resample$Rsquared),2)` 
+
+
+
+
+```{r}
+#sum.mod <- summary(model)
+#sum.mod 
+```
+
+```{r}
+#kable(sum.mod$coefficients, caption = "The averaged trained")
+```
+
+
+ 
+\newpage 
+
+Evaluate the trained model and further validate this model on 33% of rest of the data. 
+
+```{r, echo=FALSE}
+Prediction <- predict(model,testdata, interval=c("confidence"))
+
+plot(Prediction)
+plot(Prediction~testdata$SUM, xlab="Predicted Values", ylab="Actual from Test Data")
+abline(lm(Prediction~testdata$SUM))
+
+```
+
+
+```{r}
+summary <- lm(testdata$SUM~Prediction)
+out <- tidy(summary)
+kable(out, digits = 3)
+```
+
+
+
+\newpage
+
+
+
+
+
+
+
+
+#### SUM ~ MCYE 
+
+```{r, echo=FALSE}
+
+set.seed(123) 
+zdata <- LOGTransformed %>% # Only select variables of interest
+  select(SUM, MCYE) %>%
+  na.omit() # Omit all NA's
+
+Dataframe <- as.data.frame(zdata) # Convert it as a dataframe
+
+# Split our Data if we wanted to test it later. However not neccesary. This seems to be the old way. 
+
+ind = createDataPartition(Dataframe$SUM, p=2/3, list=FALSE) 
+traindata <- Dataframe[ind,] # Training dataset is 66%
+testdata <- Dataframe[-ind,] # Testing dataset is 33%
+
+#I was playing around with random forest. Ignore this.
+#parameterGrid <- expand.grid(mtry=c(1)) 
+
+
+# This is setting up how the training resamples the data. 
+train_control <- trainControl(method="repeatedcv", 
+                              number =10,
+                              repeats=20
+                              
+                              # , savePredictions = TRUE
+                              )
+
+model <- train(SUM~.,
+                data=traindata,
+               method="lm", # glm, rf, but no lme or mixed model support
+               trControl = train_control
+               #tuneGrid = parameterGrid
+               )
+
+
+```
+
+
+
+Model Validation Performance:
+
+```{r}
+
+
+#mean(model$resample$Rsquared)
+```
+
+
+Our model: `r format(formula(model))` 
+
+
+
+(RMSE) = `r round(mean(model$resample$RMSE),2)` with $\sigma$ = `r round(sd(model$resample$RMSE),2)`. 
+
+Average $R^2$ = `r round(mean(model$resample$Rsquared),2) ` with $\sigma$ = `r round(sd(model$resample$Rsquared),2)` 
+
+
+
+
+```{r}
+#sum.mod <- summary(model)
+#sum.mod 
+```
+
+```{r}
+#kable(sum.mod$coefficients, caption = "The averaged trained")
+```
+
+
+ 
+\newpage 
+
+Final validation
+
+```{r, echo=FALSE}
+Prediction <- predict(model,testdata)
+
+
+plot(Prediction~testdata$SUM, xlab="Predicted Values", ylab="Actual from Test Data")
+abline(lm(Prediction~testdata$SUM))
+
+```
+
+
+```{r}
+summary <- lm(testdata$SUM~Prediction)
+out <- tidy(summary)
+kable(out, digits = 3)
+```
+
+#### SUM ~ OP + Turbidity
+
+```{r, echo=FALSE}
+
+set.seed(123) 
+zdata <- LOGTransformed %>% # Only select variables of interest
+  select(SUM, OP, turb) %>%
+  na.omit() # Omit all NA's
+
+Dataframe <- as.data.frame(zdata) # Convert it as a dataframe
+
+# Split our Data if we wanted to test it later. However not neccesary. This seems to be the old way. 
+
+ind = createDataPartition(Dataframe$SUM, p=2/3, list=FALSE) 
+traindata <- Dataframe[ind,] # Training dataset is 66%
+testdata <- Dataframe[-ind,] # Testing dataset is 33%
+
+#I was playing around with random forest. Ignore this.
+#parameterGrid <- expand.grid(mtry=c(1)) 
+
+
+# This is setting up how the training resamples the data. 
+train_control <- trainControl(method="repeatedcv", 
+                              number =10,
+                              repeats=20
+                              
+                              # , savePredictions = TRUE
+                              )
+
+model <- train(SUM~.,
+                data=traindata,
+               method="lm", # glm, rf, but no lme or mixed model support
+               trControl = train_control
+               #tuneGrid = parameterGrid
+               )
+
+
+#mean(model$resample$Rsquared)
+```
+
+
+
+Model Validation Performance:
+
+```{r}
+
+
+#mean(model$resample$Rsquared)
+```
+
+
+Our model: `r format(formula(model))` 
+
+
+
+(RMSE) = `r round(mean(model$resample$RMSE),2)` with $\sigma$ = `r round(sd(model$resample$RMSE),2)`. 
+
+Average $R^2$ = `r round(mean(model$resample$Rsquared),2) ` with $\sigma$ = `r round(sd(model$resample$Rsquared),2)` 
+
+
+
+
+```{r}
+#sum.mod <- summary(model)
+#sum.mod 
+```
+
+```{r}
+#kable(sum.mod$coefficients, caption = "The averaged trained")
+```
+
+
+ 
+\newpage 
+
+Final validation
+
+```{r, echo=FALSE}
+Prediction <- predict(model,testdata)
+
+
+plot(Prediction~testdata$SUM, xlab="Predicted Values", ylab="Actual from Test Data")
+abline(lm(Prediction~testdata$SUM))
+```
+
+
+
+```{r}
+summary <- lm(testdata$SUM~Prediction)
+out <- tidy(summary)
+kable(out, digits = 3)
+```
+
+
+
+
+
+
+#### SUM ~  OP 
+
+```{r, echo=FALSE}
+
+set.seed(123) 
+zdata <- LOGTransformed %>% # Only select variables of interest
+  select(SUM, OP) %>%
+  na.omit() # Omit all NA's
+
+Dataframe <- as.data.frame(zdata) # Convert it as a dataframe
+
+# Split our Data if we wanted to test it later. However not neccesary. This seems to be the old way. 
+
+ind = createDataPartition(Dataframe$SUM, p=2/3, list=FALSE) 
+traindata <- Dataframe[ind,] # Training dataset is 66%
+testdata <- Dataframe[-ind,] # Testing dataset is 33%
+
+
+
+# This is setting up how the training resamples the data. 
+train_control <- trainControl(method="repeatedcv", 
+                              number =10,
+                              repeats=20
+                              )
+
+model <- train(SUM~.,
+                data=traindata,
+               method="lm", # glm, rf, but no lme or mixed model support
+               trControl = train_control
+               #tuneGrid = parameterGrid
+               )
+print(model)
+
+#mean(model$resample$Rsquared)
+```
+
+
+
+Model Validation Performance:
+
+```{r}
+print(model)
+
+#mean(model$resample$Rsquared)
+```
+
+
+Our model: `r format(formula(model))` 
+
+
+
+(RMSE) = `r round(mean(model$resample$RMSE),2)` with $\sigma$ = `r round(sd(model$resample$RMSE),2)`. 
+
+Average $R^2$ = `r round(mean(model$resample$Rsquared),2) ` with $\sigma$ = `r round(sd(model$resample$Rsquared),2)` 
+
+
+
+
+```{r}
+#sum.mod <- summary(model)
+#sum.mod 
+```
+
+```{r}
+#kable(sum.mod$coefficients, caption = "The averaged trained")
+```
+
+
+ 
+\newpage 
+
+Final validation
+
+```{r, echo=FALSE}
+Prediction <- predict(model,testdata)
+
+
+plot(Prediction~testdata$SUM, xlab="Predicted Values", ylab="Actual from Test Data")
+abline(lm(Prediction~testdata$SUM))
+```
+
+
+
+```{r}
+summary <- lm(testdata$SUM~Prediction)
+out <- tidy(summary)
+kable(out, digits = 3)
+```
+
+
+
+#### SPATTS SUM ~ MCYE + Herbaceous
+```{r, echo=FALSE}
+
+set.seed(123) 
+zdata <- LOGTransformed %>% # Only select variables of interest
+  select(S_SUM, MCYE, Herbaceous) %>%
+  na.omit() # Omit all NA's
+
+Dataframe <- as.data.frame(zdata) # Convert it as a dataframe
+
+# Split our Data if we wanted to test it later. However not neccesary. This seems to be the old way. 
+
+ind = createDataPartition(Dataframe$S_SUM, p=2/3, list=FALSE) 
+traindata <- Dataframe[ind,] # Training dataset is 66%
+testdata <- Dataframe[-ind,] # Testing dataset is 33%
+
+#I was playing around with random forest. Ignore this.
+#parameterGrid <- expand.grid(mtry=c(1)) 
+
+
+# This is setting up how the training resamples the data. 
+train_control <- trainControl(method="repeatedcv", 
+                              number =10,
+                              repeats=20
+                              
+                              # , savePredictions = TRUE
+                              )
+
+model <- train(S_SUM~.,
+                data=traindata,
+               method="lm", # glm, rf, but no lme or mixed model support
+               trControl = train_control
+               #tuneGrid = parameterGrid
+               )
+
+
+#mean(model$resample$Rsquared)
+```
+
+
+
+Model Validation Performance:
+
+```{r}
+print(model)
+
+#mean(model$resample$Rsquared)
+```
+
+
+Our model: `r format(formula(model))` 
+
+
+
+(RMSE) = `r round(mean(model$resample$RMSE),2)` with $\sigma$ = `r round(sd(model$resample$RMSE),2)`. 
+
+Average $R^2$ = `r round(mean(model$resample$Rsquared),2) ` with $\sigma$ = `r round(sd(model$resample$Rsquared),2)` 
+
+
+
+
+```{r}
+#sum.mod <- summary(model)
+#sum.mod 
+```
+
+```{r}
+#kable(sum.mod$coefficients, caption = "The averaged trained")
+```
+
+
+ 
+\newpage 
+
+Final validation
+
+```{r, echo=FALSE}
+Prediction <- predict(model,testdata)
+
+
+plot(Prediction~testdata$S_SUM, xlab="Predicted Values", ylab="Actual from Test Data")
+abline(lm(Prediction~testdata$S_SUM))
+```
+
+
+
+```{r}
+summary <- lm(testdata$S_SUM~Prediction)
+out <- tidy(summary)
+kable(out, digits = 3)
+```
+
+
+
+
+#### SPATTS SUM ~ Herbaceous
+
+```{r, echo=FALSE}
+
+set.seed(123) 
+zdata <- LOGTransformed %>% # Only select variables of interest
+  select(S_SUM,  Herbaceous) %>%
+  na.omit() # Omit all NA's
+
+Dataframe <- as.data.frame(zdata) # Convert it as a dataframe
+
+# Split our Data if we wanted to test it later. However not neccesary. This seems to be the old way. 
+
+ind = createDataPartition(Dataframe$S_SUM, p=2/3, list=FALSE) 
+traindata <- Dataframe[ind,] # Training dataset is 66%
+testdata <- Dataframe[-ind,] # Testing dataset is 33%
+
+#I was playing around with random forest. Ignore this.
+#parameterGrid <- expand.grid(mtry=c(1)) 
+
+
+# This is setting up how the training resamples the data. 
+train_control <- trainControl(method="repeatedcv", 
+                              number =10,
+                              repeats=20
+                              
+                              # , savePredictions = TRUE
+                              )
+
+model <- train(S_SUM~.,
+                data=traindata,
+               method="lm", # glm, rf, but no lme or mixed model support
+               trControl = train_control
+               #tuneGrid = parameterGrid
+               )
+
+
+#mean(model$resample$Rsquared)
+```
+
+
+
+Model Validation Performance:
+
+```{r}
+
+
+#mean(model$resample$Rsquared)
+```
+
+
+Our model: `r format(formula(model))` 
+
+
+
+(RMSE) = `r round(mean(model$resample$RMSE),2)` with $\sigma$ = `r round(sd(model$resample$RMSE),2)`. 
+
+Average $R^2$ = `r round(mean(model$resample$Rsquared),2) ` with $\sigma$ = `r round(sd(model$resample$Rsquared),2)` 
+
+
+
+
+```{r}
+#sum.mod <- summary(model)
+#sum.mod 
+```
+
+```{r}
+#kable(sum.mod$coefficients, caption = "The averaged trained")
+```
+
+
+ 
+\newpage 
+
+Final validation
+
+```{r, echo=FALSE}
+Prediction <- predict(model,testdata)
+
+
+plot(Prediction~testdata$S_SUM, xlab="Predicted Values", ylab="Actual from Test Data")
+abline(lm(Prediction~testdata$S_SUM))
+```
+
+
+
+```{r}
+summary <- lm(testdata$S_SUM~Prediction)
+out <- tidy(summary)
+kable(out, digits = 3)
+```
+
+
+
+
+
+### Failed Models
+
+#### SUM ~  Medium_impervious
+
+
+
+```{r, echo=FALSE}
+
+set.seed(123) 
+zdata <- ScaledData %>% # Only select variables of interest
+  select(SUM, chloro) %>%
+  na.omit() # Omit all NA's
+
+Dataframe <- as.data.frame(zdata) # Convert it as a dataframe
+
+# Split our Data if we wanted to test it later. However not neccesary. This seems to be the old way. 
+
+ind = createDataPartition(Dataframe$SUM, p=2/3, list=FALSE) 
+traindata <- Dataframe[ind,] # Training dataset is 66%
+testdata <- Dataframe[-ind,] # Testing dataset is 33%
+
+#I was playing around with random forest. Ignore this.
+#parameterGrid <- expand.grid(mtry=c(1)) 
+
+
+# This is setting up how the training resamples the data. 
+train_control <- trainControl(method="repeatedcv", 
+                              number =10,
+                              repeats=20
+                              
+                              # , savePredictions = TRUE
+                              )
+
+model <- train(SUM~.,
+                data=Dataframe,
+               method="lm", # glm, rf, but no lme or mixed model support
+               trControl = train_control
+               #tuneGrid = parameterGrid
+               )
+
+
+#mean(model$resample$Rsquared)
+```
+
+
+
+Model Validation Performance:
+
+```{r}
+
+
+#mean(model$resample$Rsquared)
+```
+
+
+Our model: `r format(formula(model))` 
+
+
+
+(RMSE) = `r round(mean(model$resample$RMSE),2)` with $\sigma$ = `r round(sd(model$resample$RMSE),2)`. 
+
+Average $R^2$ = `r round(mean(model$resample$Rsquared),2) ` with $\sigma$ = `r round(sd(model$resample$Rsquared),2)` 
+
+
+
+
+```{r}
+#sum.mod <- summary(model)
+#sum.mod 
+```
+
+```{r}
+#kable(sum.mod$coefficients, caption = "The averaged trained")
+```
+
+
+ 
+\newpage 
+
+Final validation
+
+```{r, echo=FALSE}
+Prediction <- predict(model,testdata)
+
+
+plot(Prediction~testdata$SUM, xlab="Predicted Values", ylab="Actual from Test Data")
+abline(lm(Prediction~testdata$SUM))
+```
+
+
+
+```{r}
+summary <- lm(testdata$SUM~Prediction)
+out <- tidy(summary)
+kable(out, digits = 3)
+```
+
+
+\newpage
+
+
+
+
+
+
+
+
+
+
+
+#### SUM ~ Turbidity
+
+```{r, echo=FALSE}
+
+set.seed(123) 
+zdata <- LOGTransformed %>% # Only select variables of interest
+  select(SUM, turb) %>%
+  na.omit() # Omit all NA's
+
+Dataframe <- as.data.frame(zdata) # Convert it as a dataframe
+
+# Split our Data if we wanted to test it later. However not neccesary. This seems to be the old way. 
+
+ind = createDataPartition(Dataframe$SUM, p=2/3, list=FALSE) 
+traindata <- Dataframe[ind,] # Training dataset is 66%
+testdata <- Dataframe[-ind,] # Testing dataset is 33%
+
+#I was playing around with random forest. Ignore this.
+#parameterGrid <- expand.grid(mtry=c(1)) 
+
+
+# This is setting up how the training resamples the data. 
+train_control <- trainControl(method="repeatedcv", 
+                              number =10,
+                              repeats=20
+                              
+                              # , savePredictions = TRUE
+                              )
+
+model <- train(SUM~.,
+                data=traindata,
+               method="lm", # glm, rf, but no lme or mixed model support
+               trControl = train_control
+               #tuneGrid = parameterGrid
+               )
+
+
+#mean(model$resample$Rsquared)
+```
+
+
+
+Model Validation Performance:
+
+```{r}
+print(model)
+
+#mean(model$resample$Rsquared)
+```
+
+
+Our model: `r format(formula(model))` 
+
+
+
+(RMSE) = `r round(mean(model$resample$RMSE),2)` with $\sigma$ = `r round(sd(model$resample$RMSE),2)`. 
+
+Average $R^2$ = `r round(mean(model$resample$Rsquared),2) ` with $\sigma$ = `r round(sd(model$resample$Rsquared),2)` 
+
+
+
+
+```{r}
+#sum.mod <- summary(model)
+#sum.mod 
+```
+
+```{r}
+#kable(sum.mod$coefficients, caption = "The averaged trained")
+```
+
+
+ 
+\newpage 
+
+Final validation
+
+```{r, echo=FALSE}
+Prediction <- predict(model,testdata)
+
+
+plot(Prediction~testdata$SUM, xlab="Predicted Values", ylab="Actual from Test Data")
+abline(lm(Prediction~testdata$SUM))
+```
+
+
+
+```{r}
+summary <- lm(testdata$SUM~Prediction)
+out <- tidy(summary)
+kable(out, digits = 3)
+```
+
+
+
+
+
+
+#### SPATTS SUM ~ MCYE
+
+```{r, echo=FALSE}
+
+set.seed(123) 
+zdata <- LOGTransformed %>% # Only select variables of interest
+  select(S_SUM, MCYE) %>%
+  na.omit() # Omit all NA's
+
+Dataframe <- as.data.frame(zdata) # Convert it as a dataframe
+
+# Split our Data if we wanted to test it later. However not neccesary. This seems to be the old way. 
+
+ind = createDataPartition(Dataframe$S_SUM, p=2/3, list=FALSE) 
+traindata <- Dataframe[ind,] # Training dataset is 66%
+testdata <- Dataframe[-ind,] # Testing dataset is 33%
+
+#I was playing around with random forest. Ignore this.
+#parameterGrid <- expand.grid(mtry=c(1)) 
+
+
+# This is setting up how the training resamples the data. 
+train_control <- trainControl(method="repeatedcv", 
+                              number =10,
+                              repeats=20
+                              
+                              # , savePredictions = TRUE
+                              )
+
+model <- train(S_SUM~.,
+                data=Dataframe,
+               method="lm", # glm, rf, but no lme or mixed model support
+               trControl = train_control
+               #tuneGrid = parameterGrid
+               )
+print(model)
+
+#mean(model$resample$Rsquared)
+```
+Our model: `r format(formula(model))` 
+
+
+Across all 10-fold cross-validation, the average of the root mean square deviation (RMSE) = `r round(mean(model$resample$RMSE),2)` $\sigma$ = `r round(sd(model$resample$RMSE),2)` with an average of $R^2$ = `r round(mean(model$resample$Rsquared),2) ` with $\sigma$ = `r round(sd(model$resample$Rsquared),2)` 
+
+\newpage
+
+
+
+
+
+
+
+```{r}
+Prediction <- predict(model,testdata)
+
+
+plot(testdata$S_SUM~Prediction, xlab="Predicted Values", ylab="Actual from Test Data")
+abline(lm(Prediction~testdata$S_SUM))
+
+
+```
+
+
+```{r}
+summary <- lm(testdata$S_SUM~Prediction)
+out <- tidy(summary)
+kable(out, digits = 3)
+```
+
+\newpage
+
+
+#### SUM ~ MCYE + OP + Medium_impervious
+
+
+
+```{r, echo=FALSE}
+
+
+
+set.seed(123) 
+zdata <- LOGTransformed %>% # Only select variables of interest
+  select(SUM, Developed) %>%
+  na.omit() # Omit all NA's
+
+Dataframe <- as.data.frame(zdata) # Convert it as a dataframe
+
+# Split our Data if we wanted to test it later. However not neccesary. This seems to be the old way. 
+
+ind = createDataPartition(Dataframe$SUM, p=2/3, list=FALSE) 
+traindata <- Dataframe[ind,] # Training dataset is 66%
+testdata <- Dataframe[-ind,] # Testing dataset is 33%
+
+#I was playing around with random forest. Ignore this.
+#parameterGrid <- expand.grid(mtry=c(1,2,3)) 
+
+
+# This is a stored setting variable 
+# which sets up how the training resamples the data. 
+train_control <- trainControl(method="repeatedcv", 
+                              number =10, # The K fold
+                              repeats=20  # Repeated times
+                              
+                              # , savePredictions = TRUE
+                              )
+
+model <- train(SUM~.,
+                data=traindata,
+               method="lm", # glm, rf, but no lme or mixed model support
+               trControl = train_control
+               #tuneGrid = parameterGrid
+               )
+```
+
+
+
+Model Validation Performance:
+
+```{r}
+
+
+#mean(model$resample$Rsquared)
+```
+
+
+Our model: `r format(formula(model))` 
+
+
+Across all 10-fold cross-validation, the average of the root mean square deviation:
+
+(RMSE) = `r round(mean(model$resample$RMSE),2)` with $\sigma$ = `r round(sd(model$resample$RMSE),2)`. 
+
+Average $R^2$ = `r round(mean(model$resample$Rsquared),2) ` with $\sigma$ = `r round(sd(model$resample$Rsquared),2)` 
+
+
+
+
+```{r}
+#sum.mod <- summary(model)
+#sum.mod 
+```
+
+```{r}
+#kable(sum.mod$coefficients, caption = "The averaged trained")
+```
+
+
+ 
+\newpage 
+
+Evaluate the trained model and further validate this model on 33% of rest of the data. 
+
+```{r, echo=FALSE}
+Prediction <- predict(model,testdata)
+
+
+plot(Prediction~testdata$SUM, xlab="Predicted Values", ylab="Actual from Test Data")
+abline(lm(Prediction~testdata$SUM))
+
+```
+
+
+```{r}
+summary <- lm(testdata$SUM~Prediction)
+out <- tidy(summary)
+kable(out, digits = 3)
+```
+
+
+
+\newpage
+
+
+
+
+
+
+
+
+
+#### 16s rRNA ~ b
+
+```{r, echo=FALSE}
+
+set.seed(1233) 
+zdata <- LOGTransformed %>% # Only select variables of interest
+  select(X16SRNA,Agriculture) %>%
+  na.omit() # Omit all NA's
+
+Dataframe <- as.data.frame(zdata) # Convert it as a dataframe
+
+# Split our Data if we wanted to test it later. However not neccesary. This seems to be the old way. 
+
+ind = createDataPartition(Dataframe$X16SRNA, p=2/3, list=FALSE) 
+traindata <- Dataframe[ind,] # Training dataset is 66%
+testdata <- Dataframe[-ind,] # Testing dataset is 33%
+
+#I was playing around with random forest. Ignore this.
+#parameterGrid <- expand.grid(mtry=c(1)) 
+
+
+# This is setting up how the training resamples the data. 
+train_control <- trainControl(method="repeatedcv", 
+                              number =10,
+                              repeats=20
+                              
+                              # , savePredictions = TRUE
+                              )
+
+model <- train(X16SRNA~.,
+                data=Dataframe,
+               method="lm", # glm, rf, but no lme or mixed model support
+               trControl = train_control
+               #tuneGrid = parameterGrid
+               )
+print(model)
+
+#mean(model$resample$Rsquared)
+```
+
+
+Model Validation Performance:
+
+```{r}
+print(model)
+
+#mean(model$resample$Rsquared)
+```
+
+
+Our model: `r format(formula(model))` 
+
+
+
+(RMSE) = `r round(mean(model$resample$RMSE),2)` with $\sigma$ = `r round(sd(model$resample$RMSE),2)`. 
+
+Average $R^2$ = `r round(mean(model$resample$Rsquared),2) ` with $\sigma$ = `r round(sd(model$resample$Rsquared),2)` 
+
+
+
+
+```{r}
+#sum.mod <- summary(model)
+#sum.mod 
+```
+
+```{r}
+#kable(sum.mod$coefficients, caption = "The averaged trained")
+```
+
+
+ 
+\newpage 
+
+Final validation
+
+```{r, echo=FALSE}
+Prediction <- predict(model,testdata)
+
+
+plot(Prediction~testdata$X16SRNA, xlab="Predicted Values", ylab="Actual from Test Data")
+abline(lm(Prediction~testdata$X16SRNA))
+```
+
+
+
+```{r}
+summary <- lm(testdata$X16SRNA~Prediction)
+out <- tidy(summary)
+kable(out, digits = 3)
+```
+
+
+
+
+
+
+#### SPATTS SUM ~ MCYE
+
+```{r, echo=FALSE}
+
+set.seed(123) 
+zdata <- LOGTransformed %>% # Only select variables of interest
+  select(S_SUM, MCYE) %>%
+  na.omit() # Omit all NA's
+
+Dataframe <- as.data.frame(zdata) # Convert it as a dataframe
+
+# Split our Data if we wanted to test it later. However not neccesary. This seems to be the old way. 
+
+ind = createDataPartition(Dataframe$S_SUM, p=2/3, list=FALSE) 
+traindata <- Dataframe[ind,] # Training dataset is 66%
+testdata <- Dataframe[-ind,] # Testing dataset is 33%
+
+#I was playing around with random forest. Ignore this.
+#parameterGrid <- expand.grid(mtry=c(1)) 
+
+
+# This is setting up how the training resamples the data. 
+train_control <- trainControl(method="repeatedcv", 
+                              number =10,
+                              repeats=20
+                              
+                              # , savePredictions = TRUE
+                              )
+
+model <- train(S_SUM~.,
+                data=Dataframe,
+               method="lm", # glm, rf, but no lme or mixed model support
+               trControl = train_control
+               #tuneGrid = parameterGrid
+               )
+print(model)
+
+#mean(model$resample$Rsquared)
+```
+Our model: `r format(formula(model))` 
+
+
+Across all 10-fold cross-validation, the average of the root mean square deviation (RMSE) = `r round(mean(model$resample$RMSE),2)` $\sigma$ = `r round(sd(model$resample$RMSE),2)` with an average of $R^2$ = `r round(mean(model$resample$Rsquared),2) ` with $\sigma$ = `r round(sd(model$resample$Rsquared),2)` 
+
+\newpage
+
+```{r}
+
+
+
+```
+
+
+```{r}
+summary <- lm(testdata$S_SUM~Prediction)
+out <- tidy(summary)
+kable(out, digits = 3)
+```
+
+## Subset
+
+## mcyE gene as Response
+
+
+```{r, echo=FALSE}
+
+         
+zFull1 <- regsubsets(MCYE ~ .,
+                    nvmax=6, 
+                    nbest=4, 
+                    force.out = "SUM",
+                    really.big=TRUE,
+                    MCSUMresponseAverage, 
+                    method = "exhaustive")
+plot(zFull1)
+
+```
+
+```{r}
+model1 <- lm(MCYE~temp5ambient, data=LOGTransformed)
+anova(model1)
+summary(model1)
+plot(LOGTransformed$MCYE~LOGTransformed$temp3ambient)
+plot(model1)
+```
+
+
+```{r, fig.cap="Subset Analysis for Predicting mcyE:Top 15 Models Exhaustive Search"}
+zb <- summary(zFull1)
+bic <- zb$bic
+matrix <- zb$which 
+rownames(matrix) <- bic
+library(reshape2)
+meltedz <- melt(matrix)
+melted <- meltedz %>% filter(Var1 < -9.9) 
+ggplot(melted, aes(x= Var2, y = Var1, fill =  value)) +
+  geom_tile() +
+  scale_fill_manual(values = c("white", "black")) +
+    theme(legend.position = "none",axis.text.x=element_text(size=5,angle = 45, hjust =1)) +
+  scale_y_reverse() +
+  ylab("BIC") +
+  xlab("Predictor")
+ggsave("Subset1.eps", device="eps")
+```
+
+* Here we can select total phosphorus, TN:TP ratio, turbidity, chloraphyl-a, phyocyanin, herbaceous.
+\newpage
+
+```{r,}
+model1 <- lm(MCYE~
+               NOX +
+               wtemp +
+               do +
+               conduc +
+               Herbaceous +
+               LogMusselNum,
+             data=MCSUMresponseAverage)
+kable(Anova(model1), digits = 3)
+```
+
+```{r, include=FALSE}
+model1 <- lm(MCYE~
+               NOX +
+               wtemp +
+               do +
+               conduc +
+               LogMusselNum,
+             data=MCSUMresponseAverage)
+Anova(model1)
+```
+
+
+```{r,include=FALSE}
+model1 <- lm(MCYE~
+               NOX +
+               wtemp +
+               do +
+               conduc +
+               LogMusselNum,
+             data=MCSUMresponseAverage)
+Anova(model1)
+```
+
+```{r,include=FALSE}
+model1 <- lm(MCYE~
+               wtemp +
+               do +
+               conduc +
+               LogMusselNum,
+             data=MCSUMresponseAverage)
+Anova(model1)
+```
+
+
+```{r,include=FALSE}
+model1 <- lm(MCYE~
+               wtemp +
+               conduc +
+               LogMusselNum,
+             data=MCSUMresponseAverage)
+Anova(model1)
+
+```
+
+```{r}
+model1 <- lm(MCYE~
+               wtemp +
+               LogMusselNum,
+             data=MCSUMresponseAverage)
+zyzz <- Anova(model1)
+kable(zyzz, digits = 3)
+
+
+```
+
+
+```{r}
+model1 <- lm(MCYE~
+               LogMusselNum,
+             data=MCSUMresponseAverage)
+zyzz <- Anova(model1)
+kable(zyzz, digits=3)
+
+```
+
+
+
+
+```{r}
+model1 <- lm(MCYE~
+               LogMusselNum,
+             data=MCSUMresponseAverage)
+zyzz <- Anova(model1)
+kable(zyzz, digits = 3)
+
+```
+
+```{r}
+
+model1 <- lm(MCYE~
+               wtemp,
+             data=MCSUMresponseAverage)
+zyzz <- Anova(model1)
+kable(zyzz, digits=3)
+
+
+```
+
+The only model best to predict *mcyE* . Water temprature and mussel data did not have signifigant relationship with MC Sum.
+
+
+
+
+\newpage
+
+
+## MC Sum from SPATTs as Response Variable
+
+
+
+```{r, echo=FALSE}
+
+#Setup 
+SPATTSresponseAverage <- UltimateFactor %>% select(-CYANA,-SxtA,-Sensored,-PPIA,-Sensored_1,-S_EL_CENS,-Dates, -month, -fiveday, -threeday:-Network,-Open_clos,-Present_Absent_Zebra,-network,-open, -Anatoxin, -Cylindro,-CyrA) %>%
+  group_by(LK_CODE) %>%
+  summarise_all(funs(mean(., na.rm=TRUE))) %>%
+  mutate_at(vars(OP), funs(log10(.+0.003))) %>%
+  mutate_at(vars(NOX), funs(log10(.+0.04))) %>%
+  mutate_at(vars(NH3), funs(log10(. + 0.006))) %>%
+  mutate_at(vars(TP), funs(log10(. + 0.002))) %>%
+  mutate_at(vars(TKN), funs(log10(. + 0.07))) %>%
+  mutate_at(vars(TN), funs(log10(. + 0.116))) %>%
+  mutate_at(vars(do), funs(log10(. + 0.01))) %>%
+  mutate_at(vars(turb, conduc), funs(log10(. + 0.01))) %>%
+  mutate_at(vars(ELISA), funs(log10(. + 0.15))) %>%
+  mutate_at(vars(Lake_Area_sqKm), funs(log10(. + 1))) %>%
+  mutate_at(vars(Watershed_Area_sqKm), funs(log10(. + 1))) %>%
+  mutate_at(vars(phyco,chloro), funs(log10(. + 0.01))) %>%
+  mutate_at(vars(X16SRNA, MCYE), funs(log10(. + 20))) %>%
+  mutate_at(vars(Nodul:SUM), funs(log10(. + 0.03))) %>% # Mass Spec
+  mutate_at(vars(S_D_Asp3_RR:S_SUM), funs(log10(. + 1))) %>% # SPATTS
+  mutate_at(vars(precip3, precip5, precip7, precip30, hobolight), funs(log10(.+1))) %>%
+  select(-LK_CODE:-doy, -Nodul:-SUM, -ecoregion, -surveyor, -ELISA, -S_D_Asp3_RR:-S_MC_LF)
+  
+         
+zsFull <- regsubsets(S_SUM ~ .,
+                    nvmax=6, 
+                    nbest=10,
+                    SPATTSresponseAverage, 
+                    method = "exhaustive")
+
+```
+
+
+```{r, fig.cap="Subset Analysis for Predicting MC from SPATT: Exhaustive Search"}
+#summary(zFull)
+plot(zsFull)
+
+```
+
+The notable variables frequently chosen are ortho-P, nitrate+nitrite-N, *16s rRNA*, *mcyE*, water temprature, herbaceous, mussel mass.
+
+\newpage
+
+```{r, fig.cap="Subset Analysis for Predicting MC from SPATT:Top 15 Models Exhaustive Search"}
+zb <- summary(zsFull)
+bic <- zb$bic
+matrix <- zb$which
+rownames(matrix) <- bic
+library(reshape2)
+meltedz <- melt(matrix)
+melted <- meltedz %>% filter(Var1 < -23)
+ggplot(melted, aes(x= Var2, y = Var1, fill =  value)) +
+  geom_tile() +
+  scale_fill_manual(values = c("white", "black")) +
+    theme(legend.position = "none",axis.text.x=element_text(size=5,angle = 45, hjust =1)) +
+  scale_y_reverse() +
+  ylab("BIC") +
+  xlab("Predictor") +
+  ggtitle("Exhaustive Subset Search")
+```
+
+The best subset model is with variables including ortho-P, nitrate+nitrite-N, *mcyE*, barren, herbaceous. They are selected as candidate variables.
+
+
+`
+\newpage
+
+```{r, echo=TRUE}
+model1 <- lm(S_SUM~  #Starting out all variables, then backward selection
+               OP +
+               NOX +
+               X16SRNA +
+               MCYE +
+               wtemp +
+               Herbaceous +
+               LogMusselMass +
+               LogMusselNum,
+             data=SPATTSresponseAverage)
+kable(Anova(model1), digits = 3)
+```
+
+One variables with $\alpha$ > 0.05 will be dropped and reanalyzed with ANOVA. This is repeated until the last few variables. 
+
+```{r, include=FALSE}
+model1 <- lm(S_SUM~  #Starting out all variables, then backward selection
+               OP +
+               X16SRNA +
+               MCYE +
+               wtemp +
+               Herbaceous +
+               LogMusselNum ,
+             data=SPATTSresponseAverage)
+Anova(model1)
+```
+
+```{r, include=FALSE}
+model1 <- lm(S_SUM~  
+               OP +
+               X16SRNA +
+               MCYE +
+               wtemp +
+               Herbaceous +
+               LogMusselNum  ,
+             data=SPATTSresponseAverage)
+Anova(model1)
+```
+
+
+
+
+```{r, include=TRUE}
+model1 <- lm(S_SUM~  
+               OP +
+               X16SRNA +
+               MCYE +
+               Herbaceous  ,
+             data=SPATTSresponseAverage)
+kable(Anova(model1), digits = 3)
+```
+
+```{r,echo=FALSE}
+model1 <- lm(S_SUM~  
+               OP +
+               MCYE +
+               Herbaceous  ,
+             data=SPATTSresponseAverage)
+kable(Anova(model1), digits = 3)
+```
+
+
+```{r}
+model1 <- lm(S_SUM~
+               MCYE +
+               Herbaceous  ,
+             data=SPATTSresponseAverage)
+kable(Anova(model1), digits = 3)
+```
+
+\newpage
+
+
+
+```{r}
+model1 <- lm(S_SUM~
+               Herbaceous,
+             data=SPATTSresponseAverage)
+kable(Anova(model1), digits = 3)
+
+```
+
+```{r}
+model1 <- lm(S_SUM~
+               MCYE,
+             data=SPATTSresponseAverage)
+kable(Anova(model1), digits = 3)
+```
+
+
+
+
+
+\newpage
+
+
+
+```{r, fig.cap= "MC from Spatts ~ mcyE"}
+cf <- round(coef(lm(S_SUM~MCYE, data=SPATTSresponseAverage)), 2) 
+eq <- paste0("Log(MC) = ", 
+             ifelse(sign(cf[2])==1, " + ", " - "), abs(cf[2]), " mcyE ", cf[1])
+plot(SPATTSresponseAverage$S_SUM~SPATTSresponseAverage$MCYE, xlab="Log(mcyE)", ylab = "Log(MC Sum) from SPATTs")
+abline(lm(SPATTSresponseAverage$S_SUM~SPATTSresponseAverage$MCYE))
+mtext(eq, 3, line=-1)
+```
+
+```{r, fig.cap="Residual Analysis of MC Sum ~ mcyE"}
+model1 <- lm(S_SUM~MCYE, data=SPATTSresponseAverage, na.action=na.omit)
+layout(matrix(c(1,2,3,4),2,2))
+plot(model1)
+```
+
+
+\newpage
+
+```{r}
+cf <- round(coef(lm(S_SUM~Herbaceous, data=SPATTSresponseAverage)), 2) 
+eq <- paste0("log(MC SUM)= ", 
+              abs(cf[2]), "*Herbaceous ", cf[1])
+plot(SPATTSresponseAverage$S_SUM~SPATTSresponseAverage$Herbaceous, xlab="% Herbaceous ", ylab = "MC Sum from SPATTs")
+abline(lm(SPATTSresponseAverage$S_SUM~SPATTSresponseAverage$Herbaceous))
+mtext(eq, 3, line=-9)
+```
+
+```{r, fig.cap="Residual analysis of MC Sum ~ Herbaceous"}
+model1 <- lm(S_SUM~Herbaceous, data=SPATTSresponseAverage, na.action=na.omit)
+layout(matrix(c(1,2,3,4),2,2))
+plot(model1)
+```
+
+
+
+### Best Model
+
+
+```{r}
+FullModel <- lm(S_SUM ~
+               MCYE +
+               Herbaceous,
+               data=SPATTSresponseAverage)
+Model1 <- lm(S_SUM ~
+                MCYE,
+               data=SPATTSresponseAverage)
+Model2 <- lm(S_SUM ~
+               Herbaceous,
+               data=SPATTSresponseAverage)
+
+Model3 <- lm(S_SUM~
+               Agriculture,
+             data=SPATTSresponseAverage)
+
+Model4 <- lm(S_SUM~
+               Forest,
+             data=SPATTSresponseAverage)
+
+Model5 <- lm(S_SUM~
+               Shrubs,
+             data=SPATTSresponseAverage)
+
+
+
+```
+
+* FullModel = `r format(formula(FullModel))`
+
+* Model 1 = `r format(formula(Model1))`
+
+* Model 2 = `r format(formula(Model2))`
+
+* Model 3 = `r format(formula(Model3))`
+
+* Model 4 = `r format(formula(Model4))`
+
+* Model 5 = `r format(formula(Model5))`
+
+
+
+```{r}
+zss <- BIC(FullModel, Model1, Model2, Model3, Model4, Model5)
+
+kable(zss, digits = 2)
+```
+
+
+The best predictor model for MC from SPATTs is *mcyE* and Herbaceous land use.
+
+## barcongners.eps
+
+```{r}
+UltimateFactor %>% 
+  gather(Congener, Concentrations, Nodul:MC_LF) %>%
+  ggplot(aes(Congener,Concentrations )) + 
+  stat_summary(fun.y=mean, 
+               geom = "bar", 
+               fill="white",
+               na.rm = T,
+               color="black") + 
+  theme_cowplot() +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width=0.5) + 
+  scale_x_discrete(label=c( "[D-Asp3] MC-LR", "[D-Asp3] MC-RR",   "MC-HilR", "MC-HtyR","MC-LA", "MC-LF" "MC-LR",  "MC-LW", "MC-LY","MC-RR", "MC-WR", "MC-YR", "Nodularin")) +
+  xlab("Congeners") +
+  ylab("Concentrations (ppb)") +
+  theme(axis.text.x = element_text(angle = 90, size = 6, vjust = 0.4) )
+ggsave("barcongners.eps", device="eps")

@@ -1,0 +1,614 @@
+---
+title: "HABS 2017-Data Analysis"
+
+output:
+  beamer_presentation: default
+  ioslides_presentation: default
+  slidy_presentation: default
+csl: citationstyle.csl
+bibliography: sources.bib
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+
+#Librarys
+#install.packages("tidyverse")
+library(tidyverse)
+#install.packages("shiny")
+library(shiny)
+#install.packages("GGally")
+library(GGally)
+#install.packages("viridis")
+library(viridis)
+#install.packages("ggthemes")
+library(ggthemes)
+#install.packages("xtable")
+library(xtable)
+
+library(readxl)
+#install.packages("RColorBrewer")
+library(RColorBrewer)
+#install.packages("stargazer")
+library(stargazer)
+#install.packages("rpart")
+#install.packages("rpart.plot")
+#install.packages("tensorflow")
+#library(tensorflow)
+library(rpart)
+library(rpart.plot)
+# Regression Packages
+#install.packages("MASS")
+#install.packages("lme4")
+#install.packages("leaps")
+library(lme4)
+library(leaps)
+#install.packages("rmarkdown")
+library(rmarkdown)
+#install.packages("knitr")
+library(knitr)
+library(kableExtra)
+library(leaps)
+#install.packages("cowplot")
+library(cowplot)
+#install.packages("FactoMineR")
+#install.packages("factoextra")
+#library(MASS)
+library(FactoMineR)
+library(factoextra)
+
+#Functions
+
+
+
+
+
+
+
+#Load Data
+
+Master_Sheet <- read_excel("20170214_Master_Sheet.xlsx", 
+                                     na = "-999")
+Lake_info_comprehensive <- read_excel("C:/Users/John Conner/Google Drive/2017-2018 HAB Survey/DATA/Master/Lake_info_comprehensive.xls")
+
+#Manipulation------
+
+# Order months by month instead of alphabetical
+MonthOrdered <- Master_Sheet %>% 
+  mutate(month = factor(month.name[Month], levels = month.name)) %>% 
+  arrange(month)
+
+# Subset for generalized model and apply log transformation
+MODEL <- MonthOrdered %>% 
+  select(8:12, 14, 16, 20:33, 39:53, 55:61) %>%
+  mutate_at(vars(OP:TKN, 8:36), funs(log1p(.)))
+
+# Subset for PCA, no log transformation and only all numerical values
+MODEL_PCA <- MonthOrdered %>%
+  select(8:12, 14, 15, 16, 32, 52, 55:61)
+
+# Subset with NA removed
+MODEL_NA <- MODEL %>% select(1:6, SUM, 37:43) %>% na.omit()
+
+# Calculate land use percentages
+info <- Lake_info_comprehensive %>% 
+  rowwise() %>% 
+  mutate(sum = sum(Water,Developed,Barren,Forest,Shrubs,
+                   Herbaceous,Agriculture,Wetlands)) %>% 
+  mutate_at(vars(Water:Wetlands), funs(./sum)) %>% 
+  mutate_at(vars(Water:Wetlands), funs(.*100))
+
+# Averages for each lake code         
+lkcode_grp <- MonthOrdered %>%
+  group_by(LK_CODE) %>% select(LK_CODE, OP:phyco) %>%
+  summarise_all(funs(mean(.,na.rm = TRUE))) %>%
+  mutate_at(vars(OP:TKN, Nodul:S_ELISA), funs(log1p(.))) %>%
+  mutate_at(vars("16SRNA", MCYE, do:phyco), funs(log(.)))
+
+# Joined 
+model <- full_join(info, lkcode_grp, by = "LK_CODE")
+
+model1 <- full_join(info, lkcode_grp, by = "LK_CODE") %>% 
+  mutate_at(vars(Water:Wetlands), funs(./100))
+
+fullmod <- full_join(info, MonthOrdered, by ="LK_CODE") %>%
+  mutate_at(vars(Water:Wetlands), funs(./100))
+
+# Subsets
+grabNutes <- MonthOrdered %>% 
+  select(LK_CODE, month, NOX, OP, NH3, TP, TKN, ELISA, SUM,TNTP) %>% 
+  mutate_at(vars(NOX, OP, NH3, TP, TKN, ELISA, SUM), funs(log1p(.)))
+
+spattNutes <- MonthOrdered %>% 
+  select(LK_CODE, month, NOX, OP, NH3, TP, TKN, S_ELISA, S_SUM) %>% 
+  mutate_at(vars(NOX, OP, NH3, TP, TKN, S_ELISA, S_SUM), funs(log1p(.)))
+
+cong_lk <- MonthOrdered %>%
+  select(LK_CODE, Nodul:ELISA) %>% 
+  group_by(LK_CODE) %>% summarise_all(funs(mean(.,na.rm = TRUE))) %>%
+  rowwise() %>% 
+  mutate(sumz = sum(Nodul,D_Asp3_RR, MC_RR, MC_YR, MC_HTyR, MC_LR, D_Asp3_LR, MC_HiLR, MC_WR, MC_LA, MC_LY, MC_LW, MC_LF, na.rm = TRUE)) %>% 
+  mutate_at(vars(Nodul:MC_LF), funs(./sumz)) %>% 
+  mutate_at(vars(Nodul:MC_LF), funs(.*100))
+
+cong_sp <- MonthOrdered %>%
+  select(LK_CODE, S_D_Asp3_RR:S_ELISA) %>% 
+  group_by(LK_CODE) %>% summarise_all(funs(mean(.,na.rm = TRUE))) %>%
+  rowwise() %>% 
+  mutate(sumz = sum(S_Nodul,S_D_Asp3_RR, S_MC_RR, S_MC_YR, S_MC_HtyR, S_MC_LR, S_D_Asp3LR, S_MC_HilR, S_MC_WR, S_MC_LA, S_MC_LY, S_MC_LW, S_MC_LF, na.rm = TRUE)) %>% 
+  mutate_at(vars(S_D_Asp3_RR:S_MC_LF), funs(./sumz)) %>% 
+  mutate_at(vars(S_D_Asp3_RR:S_MC_LF), funs(.*100))
+
+# Tables for barplots as percentages
+cong_sum <- cong_lk %>% gather(congener, percentage, Nodul:MC_LF)
+
+landus_sum <- model %>% gather(LandUse, percentage, Water:Wetlands)
+
+cong_sum_sp <- cong_sp %>% gather(congener, percentage, S_D_Asp3_RR:S_MC_LF)
+
+cong_1 <- inner_join(
+  cong_sum, Lake_info_comprehensive, by = "LK_CODE"
+  ) %>% 
+  select(LK_CODE, congener, percentage, Lat)
+
+cong_2 <- inner_join(
+  cong_sum_sp, Lake_info_comprehensive, by = "LK_CODE"
+  ) %>% 
+  select(LK_CODE, congener, percentage, Lat)
+#
+
+```
+
+```{r new, include=FALSE}
+library(lavaan)
+library(semPlot)
+PCA_Land <- model1 %>% select(8, 11:21, 23:29,  47, 67) %>% na.omit()
+```
+
+## Outline
+
+- Basic stats
+- Lets Explore into the wilderness
+- Modeling
+    a. Multiple Linear Regression
+    b. Principal Component Analysis
+    c. Regression Classification Tree
+    d. Structural Equation Modeling
+ 
+    
+
+
+## Modeling Assumptions
+
+- We are assuming linear relationships between dependent and independent variables
+- The samples taken are enough to represent this relationship
+
+## Errors and Fallacies
+
+- Covariants that can be closely related
+- Sampling size and selection
+- Regional effects
+
+
+
+## Explore
+
+- Maybe we can find something else in our data
+- Lets explore
+
+
+
+## Nutrients
+
+```{r, results='asis', echo=FALSE}
+first.half <- MonthOrdered %>% select(OP:TKN)
+stargazer(as.data.frame(first.half), header=FALSE, covariate.labels = c(" Orthophosphate (mg P/mL)","Nitrate+Nitrite (mg N/mL)", "Ammonia (mg N/mL) ", "Total Phosphorus (mg P/mL)", "Total Nitrogen (mg N/mL)"), font.size = "small")
+
+```
+
+
+
+## Nutrients
+
+
+```{r, fig.height=7}
+first.half %>% gather(Nutrients, count, OP:NH3) %>% ggplot(aes((count), fill=Nutrients)) + geom_density(alpha=0.8)  + scale_fill_brewer(palette = "Dark2" , labels = c("Ammonia", "Nitrate+Nitrite", "Orthophosphate")) + scale_x_continuous(limits = (c(0,0.25))) + theme_classic()
+```
+
+## Nutrients
+
+```{r, fig.height=7}
+first.half %>% gather(Nutrients, count, TP:TKN) %>% ggplot(aes((count), fill=Nutrients)) + geom_density(alpha=0.8)  + scale_fill_brewer(palette = "Set3" , labels = c("Total Phosphate", "Total Nitrogen")) + scale_x_continuous(limits = (c(0,0.25))) + scale_y_continuous(limits = (c(0,75))) + theme_classic()
+
+```
+
+
+## QPCR-Summary
+
+
+```{r,warning = FALSE, echo=FALSE, message=FALSE, header=FALSE, results='asis'}
+second <- MonthOrdered %>%
+  select("16SRNA", MCYE:SxtA)
+stargazer(as.data.frame(second), header = FALSE,  digits = 0, covariate.labels = c("16S rRNA", "mcyE", "cyrA", "sxtA"))
+
+```
+
+
+## QPCR spread
+
+```{r, fig.height=7}
+MonthOrdered %>% gather(Gene, Copies, '16SRNA', MCYE) %>% 
+ggplot(aes(((Copies)), fill=Gene)) + geom_density(alpha=0.8)  + scale_fill_brewer(palette = "Dark2" ) + theme_classic()
+```
+
+
+## QPCR
+
+```{r, fig.height=7}
+MonthOrdered %>% gather(Gene, Copies, '16SRNA', MCYE) %>% 
+ggplot(aes((log(Copies)), fill=Gene)) + geom_density(alpha=0.8)  + scale_fill_brewer(palette = "Dark2" ) + theme_classic()
+
+```
+
+## Mass Spec- Grab Samples
+
+
+
+```{r boxlake, warning=FALSE, echo=FALSE, fig.height=7 }
+MonthOrdered %>% ggplot (aes(x=LK_CODE, y=(SUM))) + geom_boxplot() + theme_classic() + theme(axis.text.x = element_text(angle = 90, size = 8, vjust = 0.4))
+
+```
+ 
+ 
+## ELISA-Grab sample
+
+
+```{r boxlake2, warning=FALSE, echo=FALSE, fig.height=7}
+MonthOrdered %>% ggplot (aes(x=LK_CODE, y=(ELISA))) + geom_boxplot() + theme_classic() + theme(axis.text.x = element_text(angle = 90, size = 8, vjust = 0.4))
+
+```
+
+
+## SPATTS
+
+```{r boxlake33, warning=FALSE, echo=FALSE, fig.height=7 }
+
+MonthOrdered %>% ggplot (aes(x=LK_CODE, y=((S_SUM)))) + geom_boxplot() + theme_classic() + theme(axis.text.x = element_text(angle = 90, size = 8, vjust = 0.4))
+
+```
+
+
+## Congener Summary
+
+```{r 11, warning=FALSE, echo = FALSE}
+cong_sum %>% ggplot(aes(x=LK_CODE, y=percentage, fill=congener)) + geom_bar(stat="identity") + scale_fill_viridis(discrete=TRUE, option="magma") + theme_classic() + theme(axis.text.x = element_text(angle = 90, size = 6, vjust = 0.4)) + xlab("Lake") + labs(title="Proportion of Congeners in each Lake", fill="Congener") + ylab("%")
+
+```
+
+## Congener
+
+```{r, results='asis', echo=FALSE}
+third <- MonthOrdered %>%
+  select(Nodul:ELISA)
+stargazer(as.data.frame(third), header=FALSE, covariate.labels = c("Nodularin", "{[D-Asp3]}MC-RR", "MC-RR", "MC-YR", "MC-HtyR", "MC-LR", "{[D-Asp3]}MC-LR", "MC-HilR", "MC-WR", "MC-LA", "MC-LY","MC-LW", "MC-LF", "MC Sum from LC MS/MS ", "MC from ELISA"), notes = "Values are expressed as (mg of MC/mL)", notes.align = "r", font.size = "tiny")
+
+```
+
+
+## Congener
+
+```{r 2, warning=FALSE, echo = FALSE}
+cong_sum_sp %>% ggplot(aes(x=LK_CODE, y=percentage, fill=congener)) + theme_classic() + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4))  + geom_bar(stat="identity") + scale_fill_viridis(discrete=TRUE, option="magma") + xlab("Lake") + labs(title="Congeners % by Lake from SPATTS", fill="Congener") + ylab("%")
+
+```
+ 
+## Congener-SPATTS
+
+
+```{r, results='asis', warning = FALSE, echo=FALSE, message=FALSE}
+fourth <- MonthOrdered %>%
+  select(39:53)
+stargazer(as.data.frame(fourth), header=FALSE, covariate.labels = c("{[D-Asp3]}MC-RR", "MC-RR", "Nodularin", "MC-YR", "MC-HtyR", "MC-LR", "{[D-Asp3]}MC-LR", "MC-HilR", "MC-WR", "MC-LA", "MC-LY","MC-LW", "MC-LF", "MC Sum from LC MS/MS", "MC from ELISA"),  notes = "Values are expressed as (mg of MC*${mL^{-1}}$)", notes.align = "r", font.size = "tiny")
+
+```
+
+ 
+## Matrix-Nutrients
+
+```{r scatter2, message=FALSE, warning = FALSE, echo = FALSE, fig.width=13, fig.height=10}
+ggpairs(MODEL, columns=c( "NOX","NH3", "OP", "TKN", "TP", "SUM"), columnLabels = c("Nitrate+Nitrite", "Ammonia", "Orthophosphate", "Total Nitrogen", "Total Phosphorus", "MC Sum from LC MS/MS"), upper = list(continuous = wrap("cor", na.rm = TRUE, use = "complete.obs", size = 7))) + theme_classic()
+```
+
+## Matrix-Land Use-Grab
+
+```{r test12, message=FALSE, warning = FALSE, echo = FALSE, fig.width=13, fig.height=10}
+LandUseGGPAIRS1 <- model1 %>% select(Water:Wetlands, SUM) 
+ggpairs(LandUseGGPAIRS1,  upper = list(continuous = wrap("cor", size = 7))) + theme_classic()
+```
+
+## Matrix-SPATTS
+
+```{r scatter3, message=FALSE, warning = FALSE, echo = FALSE, fig.width=13, fig.height=10}
+ggpairs(MODEL, columns=c("NOX", "NH3", "OP", "TP", "TKN", "S_SUM"), columnLabels = c("Nitrate+Nitrite", "Ammonia", "Orthophosphate", "Total Phosphate", "Total Nitrogen", "Sum of MC from MS/MS"), upper = list(continuous = wrap("cor", size = 7))) + theme_classic()
+
+```
+
+## Matrix-LandUse on SPATTS
+
+```{r scatter55, message=FALSE, warning = FALSE, echo = FALSE, fig.width=13, fig.height=10}
+LandUseGGPAIRS1 <- model1 %>% select(Water:Wetlands, S_SUM) 
+ggpairs(LandUseGGPAIRS1, upper = list(continuous = wrap("cor", size = 7))) + theme_classic()
+
+```
+
+
+
+
+## Stepwise Regression
+
+Start:  AIC=-187.16
+
+SUM ~ OP + NOX + NH3 + TP + TKN + `16SRNA` + wtemp + pH + conduc + 
+    turb + chloro + phyco
+
+Step:  AIC=-189.1
+
+SUM ~ OP + NOX + NH3 + TP + `16SRNA` + wtemp + pH + conduc + 
+    turb + chloro + phyco
+    
+## Comparision of linear fits
+
+```{r, results='asis'}
+fit1 <- glm(SUM ~ OP + NOX + NH3 + TP + TKN  + wtemp + pH + conduc + 
+    turb + chloro + phyco, family = gaussian(), MODEL_NA)
+
+
+
+fit3 <- glm(SUM ~ OP  + pH + turb + chloro + phyco, family = gaussian(), MODEL)
+
+fit4 <- glm(SUM ~ OP  + pH + turb + phyco,  family = gaussian(), MODEL)
+
+fit5 <- glm(SUM ~ OP + '16SRNA' + turb, family = gaussian(), MODEL)
+
+stargazer(fit1, fit3, fit4, fit5, header=FALSE, single.row = TRUE, column.sep.width = "1pt", font.size = "tiny")
+```   
+
+## Land use
+
+
+```{r, results='asis'}
+fit6 <- glm(SUM ~ Wetlands + Herbaceous + Developed + Water + Shrubs + Barren, family = gaussian(), PCA_Land)
+
+
+
+fit7 <- glm(SUM ~ Developed + Agriculture + Wetlands,   family = gaussian(), PCA_Land)
+
+fit8 <- glm(SUM ~  Developed + Wetlands + Shrubs + Water, family = gaussian(), PCA_Land)
+
+fit9 <- glm(SUM ~ Developed + Wetlands + Shrubs , family = gaussian(), PCA_Land)
+
+stargazer(fit6, fit7, fit8, fit9, header=FALSE, single.row = TRUE, column.sep.width = "1pt", font.size = "tiny")
+```   
+
+
+## Regression
+
+```{r, results='asis'}
+fit6 <- glm(S_SUM ~ OP + NOX + NH3 + TP + TKN , family = gaussian(), PCA_Land)
+
+
+
+fit7 <- glm(S_SUM ~ OP + Developed + Agriculture + Wetlands,   family = gaussian(), PCA_Land)
+
+fit8 <- glm(S_SUM ~ OP + Developed + Wetlands,   family = gaussian(), PCA_Land)
+
+fit9 <- glm(S_SUM ~ Developed + Wetlands + Agriculture,  family = gaussian(), PCA_Land)
+
+stargazer(fit6, fit7, fit8, fit9, header=FALSE, single.row = TRUE, column.sep.width = "1pt", font.size = "tiny")
+```   
+
+## PCA
+
+### Purpose 
+
+- Explore the data
+- Reduce the dimensionality of data
+- Redeuce noise and redundancy
+- Identify correlated variables
+
+## Preparing Data
+
+- Performing principal component analysis (PCA) must be done on a normalized dataset. 
+- The data is scaled and centered to the variance such that the axis of each variable are not so different. 
+- Data is standardized by this formula:
+
+$$\frac{x_{i} - mean(x)}{\sigma}$$
+
+
+
+
+
+
+```{r}
+
+PCA_data2 <- PCA(PCA_Land, scale = TRUE, graph =  FALSE)
+#PCA_data_center <- PCA(MODEL, ncp = ncol (MODEL), scale.unit="FALSE")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+## PCA-Grab
+
+```{r}
+fviz_pca_var(PCA_data,
+             
+             repel = TRUE # Avoid text overlapping
+             )
+```
+
+
+## PCA-Land Use
+
+```{r}
+fviz_pca_var(PCA_data2,
+             
+             repel = TRUE # Avoid text overlapping
+             )
+
+```
+
+## Regression Trees-Grab sample
+
+
+```{r}
+
+
+rpart1 <- rpart(SUM ~ TKN + TP +  NOX + NH3 + doy +  turb, data = MODEL_NA)
+
+rpruned1 <- rpart
+rpart.plot(rpart1)
+
+
+```
+
+## Cost complexity vs tree size
+
+```{r prune}
+plotcp(rpart1)
+```
+
+
+
+## Regression Trees - SPATTS
+
+```{r}
+
+
+rpart2 <- rpart(S_SUM ~ TKN + TP + phyco + NOX + NH3 + OP +  turb, data = MODEL_PCA, minsplit=3)
+
+rpart.plot(rpart2)
+
+
+```
+
+## Regression trees- Land Use with grab sample
+```{r}
+
+
+rpart3 <- rpart(SUM ~ Water + Developed + Shrubs + Barren + Herbaceous + Wetlands + Agriculture + Max_Depth + Lake_Area_sqKm + Watershed_Area_sqKm, data = PCA_Land, minsplit=4)
+
+rpart.plot(rpart3)
+
+
+```
+
+## Regression Trees - Land use with SPATTS
+
+```{r}
+
+
+rpart4 <- rpart(S_SUM ~ Water + Developed + Shrubs + Barren + Herbaceous + Wetlands + Agriculture + Max_Depth + Lake_Area_sqKm + Watershed_Area_sqKm, data = PCA_Land, minsplit=4)
+
+rpart.plot(rpart4)
+
+
+```
+
+## Structural Path Analysis
+
+
+```{r}
+model.nutrients121 <- ' SUM ~ OP + NOX + NH3 + TKN + TP + phyco + turb
+
+'
+                   
+                    
+fit <- sem(model.nutrients121, data=MonthOrdered)
+
+                    
+                    
+semPaths(fit, what = "stand", style = "lisrel", layout = "spring", bg = "#000000", edge.label.cex = 1.1 )
+```
+
+## Path Analysis-Land Use
+
+```{r}
+model.nutrients232 <- ' SUM ~ Water + Developed + Shrubs + Barren + Herbaceous + Wetlands + Agriculture + Max_Depth + Lake_Area_sqKm + Watershed_Area_sqKm
+'
+                   
+                    
+fit <- sem(model.nutrients232, data=PCA_Land)
+
+                    
+                    
+semPaths(fit, what = "stand", style = "lisrel", layout = "spring", bg = "#000000", edge.label.cex = 1.1 )
+```
+
+## SPATT Land Use Path analysis
+
+```{r}
+
+model.nutrients33 <- ' S_SUM ~ Water + Developed + Shrubs + Barren + Herbaceous + Wetlands + Agriculture + Max_Depth + Lake_Area_sqKm + Watershed_Area_sqKm
+'
+                   
+                    
+fit <- sem(model.nutrients33, data=PCA_Land)
+
+                    
+                    
+semPaths(fit, what = "stand", style = "lisrel", layout = "spring", bg = "#000000", edge.label.cex = 1.1 )
+```
+
+## Path Analysis-Land Use with nutrients
+
+```{r}
+model.nutrients441 <- ' OP ~ Water + Developed + Shrubs + Barren + Herbaceous + Wetlands + Agriculture + Max_Depth + Lake_Area_sqKm + Watershed_Area_sqKm
+
+NOX ~ Water + Developed + Shrubs + Barren + Herbaceous + Wetlands + Agriculture + Max_Depth + Lake_Area_sqKm + Watershed_Area_sqKm
+
+NH3 ~ Water + Developed + Shrubs + Barren + Herbaceous + Wetlands + Agriculture + Max_Depth + Lake_Area_sqKm + Watershed_Area_sqKm
+
+
+'
+                   
+                    
+fit <- sem(model.nutrients441, data=PCA_Land)
+
+                    
+                    
+semPaths(fit, what = "stand", style = "lisrel", layout = "spring", bg = "#000000", edge.label.cex = 1.1 )
+```
+
+## Total P and N Path analysis 
+
+```{r}
+model.nutrients4441 <- ' TP ~ Water + Developed + Shrubs + Barren + Herbaceous + Wetlands + Agriculture + Max_Depth + Lake_Area_sqKm + Watershed_Area_sqKm
+
+TKN ~ Water + Developed + Shrubs + Barren + Herbaceous + Wetlands + Agriculture + Max_Depth + Lake_Area_sqKm + Watershed_Area_sqKm
+
+'
+                   
+                    
+fit <- sem(model.nutrients4441, data=PCA_Land)
+
+                    
+                    
+semPaths(fit, what = "stand", style = "lisrel", layout = "spring", bg = "#000000", edge.label.cex = 1.1 )
+```
+ 
+
+
+
+

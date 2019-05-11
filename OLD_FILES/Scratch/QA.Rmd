@@ -1,0 +1,477 @@
+---
+title: "Follow-up Report"
+author: "Hamzah Ansari"
+output: 
+  pdf_document: 
+    latex_engine: lualatex
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+
+
+#install.packages("RPostgreSQL")
+library(RPostgreSQL)
+
+#Librarys
+#install.packages("tidyverse")
+library(tidyverse)
+#install.packages("shiny")
+library(shiny)
+#install.packages("GGally")
+library(GGally)
+#install.packages("viridis")
+library(viridis)
+#install.packages("ggthemes")
+library(ggthemes)
+#install.packages("xtable")
+library(xtable)
+
+library(readxl)
+#install.packages("RColorBrewer")
+library(RColorBrewer)
+#install.packages("stargazer")
+library(stargazer)
+#install.packages("rpart")
+#install.packages("rpart.plot")
+#install.packages("tensorflow")
+#library(tensorflow)
+library(rpart)
+library(rpart.plot)
+# Regression Packages
+#install.packages("MASS")
+#install.packages("lme4")
+#install.packages("leaps")
+library(lme4)
+library(leaps)
+#install.packages("rmarkdown")
+library(rmarkdown)
+#install.packages("knitr")
+library(knitr)
+library(kableExtra)
+library(leaps)
+#install.packages("cowplot")
+library(cowplot)
+#install.packages("FactoMineR")
+#install.packages("factoextra")
+#library(MASS)
+library(FactoMineR)
+library(factoextra)
+library(lubridate)
+
+#install.packages("missMDA")
+require(missMDA)
+#install.packages("texreg")
+library(texreg)
+
+#Functions
+
+
+```
+
+```{r Import Data and some Manipulated tables, include=FALSE}
+
+#Load the main data from POSTGRESQL Driver to access database. Otherwise import the mastersheet from google drive using read.csv. 
+drv <- dbDriver("PostgreSQL")
+con <- dbConnect(drv, 
+                dbname="HABS", 
+                host = "127.0.0.1",
+                port = 5432,
+                user = "postgres",
+                password = "ilovewater")
+
+# Import from database the mastersheet under schema "collected" and import land use like impervious or agriculture stuff
+zimported <- dbReadTable(con, c("collected", "mastersheet"))
+
+zimperv <- dbReadTable(con, c("gis", "imperv"))
+
+impervious_each_lake <- zimperv %>% spread(imperv, hectares) %>%
+  rename(Low = "1", Moderate = "2", Medium = "3", High = "4")%>%
+  group_by(LK_CODE) %>%
+  summarise(Low = max(Low, na.rm = TRUE),
+            Moderate = max(Moderate, na.rm=TRUE),
+            Medium = max(Medium, na.rm = TRUE),
+            High = max(High, na.rm = TRUE)
+  )
+
+#NA are -999 so convert to NULL or NA
+
+zimported[zimported==-999] <- NA 
+
+#Mastersheet with some new variables and date converted to dates. No data is dropped or altered.
+Master_Sheet <- zimported %>% 
+  select(2:62) %>% 
+  mutate(Dates = ymd(zimported$Date)) %>% 
+  mutate(TIN = NOX + NH3)
+  
+#zNOAA <- dbReadTable(con, c("gis", "precip_theissen")) %>% select(date = DATE ,prcp = PRCP, tobs =TOBS, LK_CODE) %>% 
+  #mutate(Dates = ymd(date)) %>% 
+  #select(Dates, prcp, LK_CODE, tobs) %>%
+ # mutate(prcp = as.numeric(prcp), tobs = as.numeric(tobs)) %>%
+  #mutate(Months.rain = (month(Dates, label=TRUE, abbr = FALSE)))
+
+zghcnd <- read.csv("Z:/Statistics/Habs2017/GHCND.csv")
+zzghcnd <- read.csv("Z:/Statistics/Habs2017/zzghcnd.csv")
+zjoined <- zghcnd %>% full_join(zzghcnd, by = c("STATION" = "station")) %>% drop_na(lk_code)
+
+
+zNOAA <- zjoined %>% 
+  select(date = DATE, prcp = PRCP, LK_CODE = lk_code, tobs = TOBS) %>%
+  mutate(Dates = ymd(date)) %>%
+  select(Dates, prcp, LK_CODE, tobs) %>%
+  mutate(Months.rain = (month(Dates, label=TRUE, abbr = FALSE)))
+
+
+
+
+
+#Ecoregion Import
+ecoregion <- dbReadTable(con, c("gis", "ecoregion")) %>% select(LK_CODE, US_L3NAME)
+
+#Load CSV data if postgresql doesnt work...
+#Load Data
+#Master_Sheet <- read_excel("20170214_Master_Sheet.xlsx", 
+                                     #na = "-999")
+
+Lake_info_comprehensive <- read_excel("C:/Users/John Conner/Google Drive/2017-2018 HAB Survey/DATA/Master/Lake_info_comprehensive.xls")
+
+zhobo <- read_excel("Z:/Statistics/Habs2017/Hobo_MONTHLY_SUM.xls")
+
+# Calculate land use percentages from Lake info sheet
+info <- Lake_info_comprehensive %>% 
+  rowwise() %>% 
+  mutate(sum = sum(Water,Developed,Barren,Forest,Shrubs,
+                   Herbaceous,Agriculture,Wetlands)) %>% 
+  mutate_at(vars(Water:Wetlands), funs(./sum)) 
+
+#Manipulation------
+warnings()
+# Order months by month instead of alphabetical, and converted spatts into nanogram per gram of resin. Also calculate total Sum from spatts. Also added a five or three day previous interval for temp joins
+
+MonthOrdered <- as.data.frame(Master_Sheet) %>% 
+  mutate(month = factor(month.name[Month], levels = month.name)) %>% 
+  arrange(month) %>% 
+  mutate_at(vars(39:51, 53), funs(.*45/3)) %>% 
+  rowwise() %>% 
+  mutate(S_SUM = 
+           sum(S_D_Asp3_RR, S_MC_RR, S_Nodul, S_MC_YR, S_MC_HtyR, S_MC_LR,
+               S_D_Asp3_RR, S_MC_HilR, S_MC_WR, S_MC_LA, S_MC_LY, S_MC_LW,
+               S_MC_LF)) %>%
+  mutate(fiveday = ymd(Dates - ddays(5)),
+         threeday = ymd(Dates - ddays(3)),
+         sevenday = ymd(Dates - ddays(7))) %>%
+         #,thirtyday = ymd(Dates - ddays(30))) %>%
+  slice(-128) 
+  
+  
+
+  
+  
+
+#Precipitation Join
+  
+zRain <- full_join(MonthOrdered, zNOAA, by = c("LK_CODE" = "LK_CODE", "Mo" = "Months.rain"))
+
+#Filter rain data
+zNOAA3 <- zRain %>% rowwise() %>%
+  filter(Dates.y >= as.Date(threeday) & 
+         Dates.y <= as.Date(Dates.x))
+zNOAA5 <- zRain %>% rowwise() %>% 
+  filter(Dates.y >= as.Date(fiveday) &
+         Dates.y <= as.Date(Dates.x))
+zNOAA7 <- zRain %>% rowwise() %>% 
+  filter(Dates.y >= as.Date(sevenday) &
+         Dates.y <= as.Date(Dates.x))
+#zNOAA30 <- zRain %>% rowwise() %>% 
+  #filter(Dates.y >= as.Date(thirtyday) &
+         #Dates.y <= as.Date(Dates.x))
+
+#Average by Day of sampling varied by lagged temprature dates. 
+zzNOAA3 <- zNOAA3 %>% group_by(LK_CODE, Mo) %>% summarise(precip3 = mean(prcp, na.rm = TRUE), temp3ambient = mean(tobs, na.rm =TRUE))
+
+zzNOAA5 <- zNOAA5 %>% group_by(LK_CODE, Mo) %>% summarise(precip5 = mean(prcp, na.rm = TRUE), temp5ambient = mean(tobs, na.rm =TRUE))
+
+zzNOAA7 <- zNOAA7 %>% group_by(LK_CODE, Mo) %>% summarise(precip7 = mean(prcp, na.rm = TRUE), temp7ambient = mean(tobs, na.rm =TRUE))
+
+#zzNOAA30 <- zNOAA30 %>% group_by(LK_CODE, Mo) %>% summarise(precip30 = mean(prcp, na.rm = TRUE), temp30ambient = mean(tobs, na.rm =TRUE))
+
+
+#Ultimate Join of all tables
+
+UltimateSheet <- MonthOrdered %>%
+  full_join(info, by = c("LK_CODE" = "LK_CODE")) %>%
+  full_join(impervious_each_lake, by = c("LK_CODE" = "LK_CODE")) %>%
+  full_join(ecoregion, by = c("LK_CODE" = "LK_CODE")) %>%
+  full_join(zzNOAA3, by = c("LK_CODE" = "LK_CODE", "Mo" = "Mo")) %>%
+  full_join(zzNOAA5, by = c("LK_CODE" = "LK_CODE", "Mo" = "Mo")) %>%
+  full_join(zzNOAA7, by = c("LK_CODE" = "LK_CODE", "Mo" = "Mo")) %>%
+  full_join(zhobo, by = c("LK_CODE" = "LK_CODE", "Month" = "Month")) %>%
+  rename(hobotemp = TEMP, hobolight = LIGH, ecoregion = US_L3NAME) %>%
+  mutate(LK_CODE = factor(LK_CODE),
+         Low = as.numeric(Low),
+         Moderate= as.numeric(Moderate),
+         Medium= as.numeric(Medium),
+         High= as.numeric(High),
+         year = as.factor(year),
+         
+         network = factor(Network, levels = c("1", "2", "3", "4"), exclude = TRUE),
+         open = as.factor(Open_clos)) %>%
+  select(-county, -REACHCODE, -sum, -71) %>%
+  slice(c(-132, -108, -75, -42, -10)) #%>%
+  #full_join(zzNOAA30, by = c("LK_CODE" = "LK_CODE", "Mo" = "Mo")) 
+  
+
+# Convert all character as factor
+
+UltimateFactor <- as.data.frame(UltimateSheet) %>% 
+  mutate_if(is.character, as.factor) 
+
+
+
+# Subset data frame for generalized model and apply log transformation. Add ecoregion as well by join.
+MODEL <- MonthOrdered %>% 
+  select(8:12, 14, 16, 20:33, 39:53, 55:61,7, 1,2) %>%
+  mutate_at(vars(OP:TKN, 8:36), funs(log1p(.))) %>% full_join(zNOAA, by =c("LK_CODE" = "LK_CODE", "Mo" = "Months.rain")) %>%
+  full_join(ecoregion, by =c("LK_CODE" = "LK_CODE")) %>% full_join(impervious_each_lake, by =c("LK_CODE" = "LK_CODE"))
+
+#Get congeners as zeros and ones by reportable detection limit
+RDL_Congeners <- MonthOrdered %>% 
+  select(1,2,19:33) %>% 
+  mutate(Nodul = if_else(Nodul > 0.03, 1,0)) %>% 
+  mutate(D_Asp3_RR = if_else(D_Asp3_RR > 0.03, 1,0)) %>%
+  mutate(MC_RR = if_else(MC_RR > 0.03, 1,0)) %>%
+  mutate(MC_YR = if_else(MC_YR > 0.03, 1,0)) %>%
+  mutate(MC_HTyR = if_else(MC_HTyR > 0.03, 1,0)) %>%
+  mutate(MC_LR = if_else(MC_LR > 0.03, 1,0)) %>%
+  mutate(D_Asp3_LR = if_else(D_Asp3_LR > 0.03, 1,0)) %>%
+  mutate(MC_HiLR = if_else(MC_HiLR > 0.03, 1,0)) %>%
+  mutate(MC_WR = if_else(MC_WR > 0.03, 1,0)) %>%
+  mutate(MC_LA = if_else(MC_LA > 0.03, 1,0)) %>%
+  mutate(MC_LY = if_else(MC_LY > 0.03, 1,0)) %>%
+  mutate(MC_LW = if_else(MC_LW > 0.03, 1,0)) %>%
+  mutate(MC_LF = if_else(MC_LF > 0.03, 1,0)) %>%
+  mutate(SUM = if_else(SUM > 0.03, 1,0)) %>%
+  mutate(ELISA = ifelse(ELISA > 0.15, 1,  0))
+  #This is an example to keep all other values the same
+  #mutate(ELISA = case_when(ELISA > 0.5 ~ 1, TRUE ~ ELISA))
+
+# Subset for PCA, no log transformation and only all numerical values
+MODEL_PCA <- MonthOrdered %>%
+  select(8:12, 14, 15, 16, 32, 52, 55:61, 7, 4)
+
+#[MODEL_PCA2 <-  MonthOrdered  %>% select(8:12, 14, 15, 16, 32, 52, 55:61, 7, 4, 65)
+
+# Subset with NA removed
+MODEL_NA <- MODEL %>% select(1:6, SUM, 37:43, 44) %>% na.omit()
+
+# Logistic Model
+
+LogModel <- MODEL %>% mutate(MS_SUM = ifelse(SUM > 0.1, 1, 0))
+
+
+
+# LogTransformed Averages for each lake code         
+lkcode_grp <- MonthOrdered %>%
+  group_by(LK_CODE) %>% select(LK_CODE, OP:phyco) %>%
+  summarise_all(funs(mean(.,na.rm = TRUE))) %>%
+  mutate_at(vars(OP:TKN, Nodul:S_ELISA), funs(log1p(.))) %>%
+  mutate_at(vars("X16SRNA", MCYE, do:phyco), funs(log(.)))
+
+# Joined LogTransformed Averages with land use 
+model <- full_join(info, lkcode_grp, by = "LK_CODE")
+
+model1 <- full_join(info, lkcode_grp, by = "LK_CODE") %>% 
+  mutate_at(vars(Water:Wetlands), funs(./100))
+
+fullmod <- full_join(info, MonthOrdered, by ="LK_CODE") %>%
+  mutate_at(vars(Water:Wetlands), funs(./100))
+
+# Subsets for scatterplot matrix. Log transformed
+grabNutes <- MonthOrdered %>% 
+  select(LK_CODE, month, NOX, OP, NH3, TP, TKN, ELISA, SUM,TNTP) %>% 
+  mutate_at(vars(NOX, OP, NH3, TP, TKN, ELISA, SUM), funs(log1p(.)))
+
+spattNutes <- MonthOrdered %>% 
+  select(LK_CODE, month, NOX, OP, NH3, TP, TKN, S_ELISA, S_SUM) %>% 
+  mutate_at(vars(NOX, OP, NH3, TP, TKN, S_ELISA, S_SUM), funs(log1p(.)))
+
+cong_lk <- MonthOrdered %>%
+  select(LK_CODE, Nodul:ELISA) %>% 
+  group_by(LK_CODE) %>% summarise_all(funs(mean(.,na.rm = TRUE))) %>%
+  rowwise() %>% 
+  mutate(sumz = sum(Nodul,D_Asp3_RR, MC_RR, MC_YR, MC_HTyR, MC_LR, D_Asp3_LR, MC_HiLR, MC_WR, MC_LA, MC_LY, MC_LW, MC_LF, na.rm = TRUE)) %>% 
+  mutate_at(vars(Nodul:MC_LF), funs(./sumz)) %>% 
+  mutate_at(vars(Nodul:MC_LF), funs(.*100))
+
+cong_sp <- MonthOrdered %>%
+  select(LK_CODE, S_D_Asp3_RR:S_ELISA) %>% 
+  group_by(LK_CODE) %>% summarise_all(funs(mean(.,na.rm = TRUE))) %>%
+  rowwise() %>% 
+  mutate(sumz = sum(S_Nodul,S_D_Asp3_RR, S_MC_RR, S_MC_YR, S_MC_HtyR, S_MC_LR, S_D_Asp3LR, S_MC_HilR, S_MC_WR, S_MC_LA, S_MC_LY, S_MC_LW, S_MC_LF, na.rm = TRUE)) %>% 
+  mutate_at(vars(S_D_Asp3_RR:S_MC_LF), funs(./sumz)) %>% 
+  mutate_at(vars(S_D_Asp3_RR:S_MC_LF), funs(.*100))
+
+# Tables for congeners barplots as percentages
+cong_sum <- cong_lk %>% gather(congener, percentage, Nodul:MC_LF)
+
+landus_sum <- model %>% gather(LandUse, percentage, Water:Wetlands)
+
+cong_sum_sp <- cong_sp %>% gather(congener, percentage, S_D_Asp3_RR:S_MC_LF)
+
+cong_1 <- inner_join(
+  cong_sum, Lake_info_comprehensive, by = "LK_CODE"
+  ) %>% 
+  select(LK_CODE, congener, percentage, Lat)
+
+cong_2 <- inner_join(
+  cong_sum_sp, Lake_info_comprehensive, by = "LK_CODE"
+  ) %>% 
+  select(LK_CODE, congener, percentage, Lat)
+#
+```
+
+Dear particpants,
+
+We recieved a number of questions about our reports recently sent out. Some have asked what does it say about your lake, is the nutrients too high, etc... We appologize if we caused confusion or if the report seems unclear and we should have given more background information. We hope to clear some confusion about your reports and what the data means about your lake. 
+
+# Our Goal
+
+First, our survey is soley focusing on Harmful Algal Blooms (HABs) and the suite of toxins it can produce. We can not completly address the health of the whole lake as that requires a more comprehensive study. Our reports can only conclude whether you have HABs and the concentrations of toxins. 
+
+The toxin we are focusing on in particular is microcystins. Microcystin is a liver toxin and dangerous when consumed in large amounts. The most dangerous thing about this toxin is if your lake provides drinking water. There is also a risk of swimming in a lake with this toxin. For more information, the DNR has excellent information here:
+
+https://www.uwsp.edu/cnr-ap/UWEXLakes/Documents/programs/CBCW/publications/Algal-toxins.pdf 
+
+
+We assess your lake by measuring various chemical parameters and the lake's watershed. We do this so we can understand more as to how algal blooms occur.
+
+# Map of the Lake's Watershed
+
+Water flow plays an important role with the lake. As rain pours down, it picks up dirt and nutrients and eventually gets drained to the lake. A watershed is the area around the lake where water flows into your lake. In other words, if rain poured down above that area, it will eventually runoff into your lake. 
+
+We mapped out your lakes watershed using a computer software called Geographic Information System (GIS). We can map out the watershed based on using elevation data. This basically draws a boundary line around the lake. Then we can grab some data about what kind of land is around your lake. This can tell how much is agriculture, forest, water, etc.. 
+
+
+In your reports, we incluced a map of your lake's watershed and type of land use is mostly comprised of. The reason why we are looking at land use is because of the potential nutrient sources, most notably agriculture and developed areas (denoted as yellow and red). We will be using this data for statistical analysis. We include this map in your report to provide some information about your lake. 
+
+If you are curious about this software where is where to get the data, here is some information
+:
+
+https://www.qgis.org/en/site/
+
+https://nationalmap.gov/elevation.html
+
+https://landcover.usgs.gov/
+
+# Microcystin Results
+
+Microcystin actually comes in all different types. They are reffered as congeners. The most common congener is MC-LA and MC-LR. We have taken a step further and looked at a total of 12 different congeners.
+
+There are two ways of measuring microcystins. The most commonly used method which EPA and other state agencies uses is whats called an ELISA (Enzyme Link Immunosorbant Assay), and Mass Spec. ELISA measures only a few congeners, where as the mass spec looks at all 12. In your report, we included results from both types of measurements. The main graph to be concerned with is the first graph (Total MC from Grab Samples). This is the result from our water sample. If the result is above the EPA guideline of 4 micrograms per liter (4$\mu$g/L), then the lake is deemed unsafe.
+
+
+# What are SPATTS?
+
+SPATTS stand for Solid Phase Adsorbtion Toxin Tracking
+
+It is a new technique where we are exploring an alternative way of sampling. In essence, its like a tea bag that stays on a float in the lake for the whole month. There are plastic beads that picks up any toxin that we missed in our grab sample. We pick those up every month and extract the contents of what it picks up and measure how much toxins are there. This number tells us how much of the toxins have stuck to those plastic beads. 
+
+This is new technique. We can not say what levels of toxins from this technique is unsafe. We can provide the averages of this level so far. You can see how your lake is compared to our data.  
+
+
+
+```{r, results='asis'}
+fourth <- MonthOrdered %>%
+  select(39:53)
+stargazer(as.data.frame(fourth), header=FALSE, digits = 0,  covariate.labels = c("{[D-Asp3]}MC-RR", "MC-RR", "Nodularin", "MC-YR", "MC-HtyR", "MC-LR", "{[D-Asp3]}MC-LR", "MC-HilR", "MC-WR", "MC-LA", "MC-LY","MC-LW", "MC-LF", "MC Sum from LC MS/MS", "MC from ELISA"),  notes = "Values are expressed as (ng of MC / gram of resin)", notes.align = "r")
+```
+
+Here is each of the congeners found in the SPATTS.
+
+* `N` = Number of observation (How many samples)
+
+* `Mean` = Average of the whole data for that congeners
+
+* `St. Dev` = How much of that value varies
+
+* `Min` = The minimum amount found
+ 
+* `Max` = Maximum amount found
+
+
+# Nutrient Levels
+
+
+There is no known number to see if nutrient levels are above a certain level. The reason whys is because each lake is unique, and nutrient levels are always different through time.  We can categorize the lake by a different approach called a Trophic State Index (TSI). This measures how rich the lake's nutrients are based on total phosphorus, turbidity and chloraphyll. 
+
+None of any of our lakes had levels that were extreme. 
+
+```{r, fig.height=4, fig.width=10, fig.align='left'}
+first.half <- MonthOrdered %>% select(OP:TKN)
+
+PLOTNUT1 <- first.half %>% 
+  gather(Nutrients, count, OP:NH3) %>% 
+  ggplot(aes((count), fill=Nutrients)) + 
+  geom_density(alpha=0.8)  + 
+  scale_fill_viridis( discrete = TRUE,labels = c("Ammonia", "Nitrate+Nitrite", "Orthophosphate")) + 
+  scale_x_continuous(limits = (c(0,0.25))) + 
+  theme_classic() + 
+  ylab("count") + 
+  xlab("ppm or mg X/L") +
+  geom_vline(xintercept=mean(first.half$NH3, na.rm = TRUE)) +
+  geom_vline(xintercept=mean(first.half$OP, na.rm = TRUE)) +
+  geom_vline(xintercept=mean(first.half$NOX, na.rm = TRUE)) +
+  geom_text(aes(x=mean(first.half$NH3 + 0.005, na.rm = TRUE), y=60), label = "Ammonia", angle=90) +
+   geom_text(aes(x=mean(first.half$OP + 0.005, na.rm = TRUE), y=60), label = "o-Phosphorus", angle=90) +
+   geom_text(aes(x=mean(first.half$NOX + 0.005, na.rm = TRUE), y=60), label = "Nitrate+Nitrite", angle=90)
+
+PLOTNUT2 <- first.half %>% 
+  gather(Nutrients, count, TP:TKN) %>% 
+  ggplot(aes((count), fill=Nutrients)) + 
+  geom_density(alpha=0.8)  + 
+  scale_fill_viridis(discrete = TRUE, option = "B", labels = c("Total Kjeldahl Nitrogen", "Total Phosphorus")) + 
+  scale_x_continuous(limits = (c(0,0.80))) + 
+  scale_y_continuous(limits = (c(0,75))) + 
+  theme_classic() + 
+  ylab("count") + 
+  xlab("ppm or mg X/L") +
+  geom_vline(xintercept=mean(first.half$TP, na.rm = TRUE)) +
+  geom_vline(xintercept=mean(first.half$TKN, na.rm = TRUE)) +
+   geom_text(aes(x=mean(first.half$TP + 0.01, na.rm = TRUE), y=60), label = "Total P", angle=90) +
+   geom_text(aes(x=mean(first.half$TKN + 0.01, na.rm = TRUE), y=60), label = "Total Kjeldahl N", angle=90)
+
+plot_grid(PLOTNUT1, PLOTNUT2)
+## Including Plots
+```
+
+The mean of each nutrient is a vertical line. 
+
+Based on our data from all the other lakes, you can compare your nutrient results to the mean of the rest of the sampled lakes.
+
+Here we list a table of nutrients and the averages. 
+
+
+```{r, results='asis', echo=FALSE}
+
+stargazer(as.data.frame(first.half), header=FALSE, covariate.labels = c(" Orthophosphate (mg P/L)","Nitrate+Nitrite (mg N/L)", "Ammonia (mg N/L) ", "Total Phosphorus (mg P/L)", "Total Kjeldahl Nitrogen (mg N/L)"))
+
+```
+
+
+
+\newpage
+
+I hope this brings light to much of your questions. If there is something that is not clear or anything else, please contact me:
+
+hdansar2@oakland.edu
+
+
+
+
+
+
+
+
+
